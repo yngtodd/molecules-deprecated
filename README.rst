@@ -6,7 +6,7 @@
         </p>
     </embed>
 
---------------------------
+---------------------------
 
 .. image:: https://img.shields.io/pypi/v/molecules.svg
         :target: https://pypi.python.org/pypi/molecules
