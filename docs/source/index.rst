@@ -7,7 +7,6 @@ Molecules is a machine learning library for molecular dynamics.
    :maxdepth: 2
    :caption: Contents:
 
-   readme
    installation
    usage
    modules
