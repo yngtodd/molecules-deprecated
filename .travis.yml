@@ -19,7 +19,7 @@ deploy:
       eHdaR01mUENXc1E2Zk4raDdHMUNFRk9hajZxOTE5ZEovRTE2OHZmcXhWaW5mbXgzNzZsUWNpUVk9
   true:
     python: 3.6 
-    repo: yngtodd/molecules
+    repo: https://github.com/yngtodd/molecules 
     tags: true
 install: pip install -U tox-travis
 language: python
