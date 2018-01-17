@@ -1,10 +1,11 @@
-Welcome to molecules's documentation!
+Molecules Documentation!
 ======================================
 
-Contents:
+Molecules is a machine learning library for molecular dynamics.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Contents:
 
    readme
    installation
