@@ -1,5 +1,5 @@
-Molecules Documentation!
-======================================
+Molecules Documentation
+=======================
 
 Molecules is a machine learning library for molecular dynamics.
 
