@@ -18,15 +18,14 @@ deploy:
       dUNPSDNnVU1VZUxYa1Z3dC9LNm1hZkNzUng0cUlLdE9xY1lTM05xUSs1Z3VDbCswa0NCRkVoNUdH
       eHdaR01mUENXc1E2Zk4raDdHMUNFRk9hajZxOTE5ZEovRTE2OHZmcXhWaW5mbXgzNzZsUWNpUVk9
   true:
-    python: 2.7
+    python: 3.6 
     repo: yngtodd/molecules
     tags: true
 install: pip install -U tox-travis
 language: python
 python:
+- 3.6 
 - 3.5
 - 3.4
 - 3.3
-- 2.7
-- 2.6
 script: tox
