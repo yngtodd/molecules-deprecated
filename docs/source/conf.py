@@ -31,7 +31,7 @@ import os
 # version is used.
 #sys.path.insert(0, project_root)
 
-#import molecules
+import molecules
 
 # -- General configuration ---------------------------------------------
 
