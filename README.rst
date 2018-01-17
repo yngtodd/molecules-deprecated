@@ -10,21 +10,17 @@
 
 .. image:: https://img.shields.io/pypi/v/molecules.svg
         :target: https://pypi.python.org/pypi/molecules
-        :width: 25%
 
 .. image:: https://img.shields.io/travis/yngtodd/molecules.svg
         :target: https://travis-ci.org/yngtodd/molecules
-        :width: 25%
 
 .. image:: https://readthedocs.org/projects/molecules/badge/?version=latest
         :target: https://molecules.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
-        :width: 25%
 
 .. image:: https://pyup.io/repos/github/yngtodd/molecules/shield.svg
         :target: https://pyup.io/repos/github/yngtodd/molecules/
         :alt: Updates
-        :width: 25%
 
 =====================
 Welcome to Molecules!
