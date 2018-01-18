@@ -57,7 +57,6 @@ class Decoder(nn.Module):
             nn.Linear(128, self.output_size)
         )
 
-
         def forward(self, latent_input):
             """
             Parameters:
@@ -65,7 +64,7 @@ class Decoder(nn.Module):
             input : float tensor shape=(batch_size, input_size)
             Returns:
             -------
-            A float tensor with shape (batch_size, out_size)
+            A float tensor with shape (batch_size, output_size)
             """
             # Transpose input to the shape of [batch_size, embed_size, seq_len]
             input = torch.transpose(latent_input, 1, 2)
