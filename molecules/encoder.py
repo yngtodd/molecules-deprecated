@@ -42,15 +42,15 @@ class Encoder(nn.Module):
             nn.AdaptiveMaxPool2d(128),
             nn.ELU(),
 
-            nn.Conv2d(128, 64, self.kernel2, self.stride2),
+            nn.Conv2d(128, 64, self.kernel3, self.stride3),
             nn.AdaptiveMaxPool2d(64),
             nn.ELU(),
 
-            nn.Conv2d(64, 64, self.kernel3, self.stride3),
+            nn.Conv2d(64, 64, self.kernel4, self.stride4),
             nn.AdaptiveMaxPool2d(64),
             nn.ELU(),
 
-            nn.Conv2d(64, 32, self.kernel4, self.stride4),
+            nn.Conv2d(64, 32, self.kernel5, self.stride5),
             nn.AdaptiveMaxPool2d(32),
             nn.ELU(),
 
