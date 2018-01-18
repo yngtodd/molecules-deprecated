@@ -6,7 +6,7 @@
         </p>
     </embed>
 
---------------------------
+---------------------------
 
 .. image:: https://img.shields.io/pypi/v/molecules.svg
         :target: https://pypi.python.org/pypi/molecules
@@ -19,8 +19,8 @@
         :alt: Documentation Status
 
 .. image:: https://pyup.io/repos/github/yngtodd/molecules/shield.svg
-     :target: https://pyup.io/repos/github/yngtodd/molecules/
-     :alt: Updates
+        :target: https://pyup.io/repos/github/yngtodd/molecules/
+        :alt: Updates
 
 =====================
 Welcome to Molecules!
