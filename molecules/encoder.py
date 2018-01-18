@@ -35,28 +35,26 @@ class Encoder(nn.Module):
 
         self.cnn = nn.Sequential(
             nn.Conv2d(self.input_size, 128, self.kernel1, self.stride1),
-            nn.BatchNorm2d(128),
+            nn.AdaptiveMaxPool2d(128),
             nn.ELU(),
 
-            nn.Conv2d(128, 256, self.kernel2, self.stride2),
-            nn.BatchNorm2d(256),
+            nn.Conv2d(128, 128, self.kernel2, self.stride2),
+            nn.AdaptiveMaxPool2d(128),
             nn.ELU(),
 
-            nn.Conv2d(256, 256, self.kernel2, self.stride2),
-            nn.BatchNorm2d(256),
+            nn.Conv2d(128, 64, self.kernel2, self.stride2),
+            nn.AdaptiveMaxPool2d(64),
             nn.ELU(),
 
-            nn.Conv2d(256, 512, self.kernel3, self.stride3),
-            nn.BatchNorm2d(512),
+            nn.Conv2d(64, 64, self.kernel3, self.stride3),
+            nn.AdaptiveMaxPool2d(64),
             nn.ELU(),
 
-            nn.Conv2d(512, 512, self.kernel4, self.stride4),
-            nn.BatchNorm2d(512),
+            nn.Conv2d(64, 32, self.kernel4, self.stride4),
+            nn.AdaptiveMaxPool2d(32),
             nn.ELU(),
 
-            nn.Conv2d(512, self.latent_size, self.kernel5, self.stride5),
-            nn.BatchNorm2d(self.latent_size),
-            nn.ELU()
+            nn.Linear(32, latent_size)
         )
 
     def forward(self, input):

@@ -29,22 +29,21 @@ class VAE(torch.nn.Module):
         super(VAE, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
-        self._enc_mu = torch.nn.Linear(100, 8)
-        self._enc_log_sigma = torch.nn.Linear(100, 8)
 
     def _sample_latent(self, h_enc):
         """
         Return the latent normal sample z ~ N(mu, sigma^2)
         """
-        mu = self._enc_mu(h_enc)
-        log_sigma = self._enc_log_sigma(h_enc)
+        mu = h_enc
+        log_sigma = h_enc
         sigma = torch.exp(log_sigma)
         std_z = torch.from_numpy(np.random.normal(0, 1, size=sigma.size())).float()
 
         self.z_mean = mu
         self.z_sigma = sigma
 
-        return mu + sigma * Variable(std_z, requires_grad=False)  # Reparameterization trick
+        # Reparameterization trick
+        return mu + sigma * Variable(std_z, requires_grad=False)
 
     def forward(self, state):
         h_enc = self.encoder(state)
