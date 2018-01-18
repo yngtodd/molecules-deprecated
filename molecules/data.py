@@ -8,7 +8,7 @@ class FSPeptide(Dataset):
     """
     FS-Peptide Dataset.
     """
-    def __init__(self, data, label, transform=None):
+    def __init__(self, data, labels, transform=None):
         """
         Parameters:
         ----------

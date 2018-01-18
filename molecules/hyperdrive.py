@@ -8,9 +8,9 @@ from encoder import Encoder
 from decoder import Decoder
 from vae import VAE
 from vae import latent_loss
-
 from data import FSPeptide
 
+import argparse
 from hyperspace import hyperdrive
 
 
