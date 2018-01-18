@@ -11,4 +11,4 @@ PyYAML==3.12
 pytest==3.3.2
 pytest-runner==3.0
 pytorch
-torchvision
+torchvision==0.2.0
