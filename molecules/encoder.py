@@ -34,7 +34,7 @@ class Encoder(nn.Module):
         self.stride5 = stride5
 
         self.cnn = nn.Sequential(
-            nn.Conv2d(self.input_size, 128, self.kernel1, self.stride1),
+            nn.Conv2d(1, 128, self.kernel1, self.stride1),
             nn.AdaptiveMaxPool2d(128),
             nn.ELU(),
 
@@ -69,7 +69,7 @@ class Encoder(nn.Module):
         """
 
         # Transpose input to the shape of [batch_size, embed_size, seq_len]
-        input = torch.transpose(input, 1, 2)
+        #input = torch.transpose(input, 1, 2)
 
         result = self.cnn(input)
         return result.squeeze(2)

@@ -56,6 +56,8 @@ def main():
     for epoch in range(100):
         for i, data in enumerate(trainloader):
             inputs = data['cont_matrix']
+            inputs = inputs.resize_(args.batch_size, 1, 21, 21)
+            print('input shape: {}'.format(inputs.shape))
             if use_cuda:
                 inputs.cuda()
             inputs = Variable(inputs)
