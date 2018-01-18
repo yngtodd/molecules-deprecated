@@ -1,4 +1,4 @@
-import torch as t
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -71,7 +71,7 @@ class Encoder(nn.Module):
         """
 
         # Transpose input to the shape of [batch_size, embed_size, seq_len]
-        input = t.transpose(input, 1, 2)
+        input = torch.transpose(input, 1, 2)
 
         result = self.cnn(input)
         return result.squeeze(2)
