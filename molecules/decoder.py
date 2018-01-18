@@ -54,7 +54,7 @@ class Decoder(nn.Module):
             nn.AdaptiveMaxPool2d(128),
             nn.ELU(),
 
-            nn.Linear(128, self.outputsize)
+            nn.Linear(128, self.output_size)
         )
 
 
@@ -65,7 +65,7 @@ class Decoder(nn.Module):
             input : float tensor shape=(batch_size, input_size)
             Returns:
             -------
-            A float tensor with shape (batch_size, latent_variable_size)
+            A float tensor with shape (batch_size, out_size)
             """
             # Transpose input to the shape of [batch_size, embed_size, seq_len]
             input = torch.transpose(latent_input, 1, 2)
