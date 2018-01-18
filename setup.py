@@ -27,7 +27,7 @@ test_requirements = [
 
 setup(
     name='molecules',
-    version='0.1.0',
+    version='0.1.1',
     description="Machine learning for molecular dynamics.",
     long_description=readme + '\n\n' + history,
     author="Todd Young",
