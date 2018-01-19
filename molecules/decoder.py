@@ -33,8 +33,8 @@ class Decoder(nn.Module):
         self.kernel5 = kernel5
         self.stride5 = stride5
 
-        self.cnn = nn.Sequential(
-            nn.ConvTranspose2d(self.latent_size, 32, self.kernel1, self.stride1),
+        self.cnn_decoder = nn.Sequential(
+            nn.ConvTranspose2d(32, 32, self.kernel1, self.stride1),
             nn.AdaptiveMaxPool2d(32),
             nn.ELU(),
 
@@ -54,20 +54,23 @@ class Decoder(nn.Module):
             nn.AdaptiveMaxPool2d(128),
             nn.ELU(),
 
-            nn.Linear(128, self.output_size)
+            #nn.Linear(128, self.output_size),
+            #nn.ELU()
         )
 
-        def forward(self, latent_input):
-            """
-            Parameters:
-            ----------
-            input : float tensor shape=(batch_size, input_size)
-            Returns:
-            -------
-            A float tensor with shape (batch_size, output_size)
-            """
-            # Transpose input to the shape of [batch_size, embed_size, seq_len]
-            input = torch.transpose(latent_input, 1, 2)
+    def forward(self, latent_input):
+        """
+        Parameters:
+        ----------
+        input : float tensor shape=(batch_size, input_size)
 
-            result = self.cnn(input)
-            return result.squeeze(2)
+        Returns:
+        -------
+        A float tensor with shape (batch_size, output_size)
+        """
+        print("latent input in decoder {}".format(latent_input))
+        # Transpose input to the shape of [batch_size, embed_size, seq_len]
+        #input = torch.transpose(latent_input)
+        result = self.cnn_decoder(latent_input)
+        #return result.squeeze(2)
+        return result

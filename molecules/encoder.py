@@ -33,7 +33,7 @@ class Encoder(nn.Module):
         self.kernel5 = kernel5
         self.stride5 = stride5
 
-        self.cnn = nn.Sequential(
+        self.cnn_encoder = nn.Sequential(
             nn.Conv2d(1, 128, self.kernel1, self.stride1),
             nn.AdaptiveMaxPool2d(128),
             nn.ELU(),
@@ -67,9 +67,10 @@ class Encoder(nn.Module):
         -------
         A float tensor with shape (batch_size, latent_variable_size)
         """
-
+        print("input in encoder: {}".format(input))
         # Transpose input to the shape of [batch_size, embed_size, seq_len]
         #input = torch.transpose(input, 1, 2)
 
-        result = self.cnn(input)
-        return result.squeeze(2)
+        result = self.cnn_encoder(input)
+        #return result.squeeze(2)
+        return result
