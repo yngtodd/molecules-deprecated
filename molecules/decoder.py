@@ -54,8 +54,8 @@ class Decoder(nn.Module):
             nn.AdaptiveMaxPool2d(128),
             nn.ELU(),
 
-            #nn.Linear(128, self.output_size),
-            #nn.ELU()
+            nn.Linear(128, self.output_size),
+            nn.Tanh()
         )
 
     def forward(self, latent_input):
@@ -73,4 +73,5 @@ class Decoder(nn.Module):
         #input = torch.transpose(latent_input)
         result = self.cnn_decoder(latent_input)
         #return result.squeeze(2)
+        result = result.view([latent_input.size(0), 1, 21, 21])
         return result

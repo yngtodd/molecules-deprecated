@@ -4,9 +4,9 @@ import torch.nn.functional as F
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_size, latent_size, kernel1=4, stride1=2, kernel2=4,
-                 stride2=2, kernel3=4, stride3=2, kernel4=4, stride4=2,
-                 kernel5=4, stride5=2):
+    def __init__(self, input_size, latent_size, kernel1=4, stride1=1, kernel2=4,
+                 stride2=1, kernel3=4, stride3=1, kernel4=4, stride4=1,
+                 kernel5=4, stride5=1):
         super(Encoder, self).__init__()
         """
         Parameters:
@@ -17,7 +17,7 @@ class Encoder(nn.Module):
             Latent space dimension
         kernel* : int, defualt=4
             Convolutional filter size for layer *.
-        stride* : int, default=2
+        stride* : int, default=1
             Stride length for convolutional filter at layer *.
         """
         self.input_size = input_size
@@ -34,28 +34,28 @@ class Encoder(nn.Module):
         self.stride5 = stride5
 
         self.cnn_encoder = nn.Sequential(
-            nn.Conv2d(1, 128, self.kernel1, self.stride1),
-            nn.AdaptiveMaxPool2d(128),
+            nn.Conv2d(1, 32, self.kernel1, self.stride1, padding=2),
+            nn.MaxPool2d(2),
             nn.ELU(),
 
-            nn.Conv2d(128, 128, self.kernel2, self.stride2),
-            nn.AdaptiveMaxPool2d(128),
+            nn.Conv2d(32, 64, self.kernel2, self.stride2, padding=2),
+            nn.MaxPool2d(2),
             nn.ELU(),
 
-            nn.Conv2d(128, 64, self.kernel3, self.stride3),
-            nn.AdaptiveMaxPool2d(64),
+            nn.Conv2d(64, 64, self.kernel3, self.stride3, padding=2),
+            nn.MaxPool2d(2),
             nn.ELU(),
 
-            nn.Conv2d(64, 64, self.kernel4, self.stride4),
-            nn.AdaptiveMaxPool2d(64),
-            nn.ELU(),
+            nn.Conv2d(64, 64, self.kernel4, self.stride4, padding=2),
+            nn.MaxPool2d(2),
+            nn.ELU())
 
-            nn.Conv2d(64, 32, self.kernel5, self.stride5),
-            nn.AdaptiveMaxPool2d(32),
-            nn.ELU(),
+            # nn.Conv2d(64, 32, self.kernel5, self.stride5),
+            # nn.AdaptiveMaxPool2d(32),
+            # nn.ELU(),
 
-            nn.Linear(32, latent_size)
-        )
+        self.fc = nn.Linear(64*2*2, 8)
+
 
     def forward(self, input):
         """
@@ -71,6 +71,8 @@ class Encoder(nn.Module):
         # Transpose input to the shape of [batch_size, embed_size, seq_len]
         #input = torch.transpose(input, 1, 2)
 
-        result = self.cnn_encoder(input)
-        #return result.squeeze(2)
-        return result
+        out = self.cnn_encoder(input)
+        print('output of cnn_encoder has shape {}'.format(out.shape))
+        out = out.view(out.size(0), -1)
+        out = self.fc(out)
+        return out

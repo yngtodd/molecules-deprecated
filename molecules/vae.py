@@ -52,8 +52,7 @@ class VAE(torch.nn.Module):
         h_enc = self.encoder(state)
         print('h_enc is of type {}'.format(type(h_enc)))
         z = self._sample_latent(h_enc)
-        print('z is {}'.format(z))
-        print('decoder: {}'.format(self.decoder.latent_size))
+        print('z has shape {}'.format(z.shape))
         out = self.decoder(z)
-        print('output is {}'.format(out))
+        print('output has shape {}'.format(out.shape))
         return out
