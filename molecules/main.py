@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 
 from encoder import Encoder
 from decoder import Decoder
+from fc_decoder import FCDecoder
 from vae import VAE
 from vae import latent_loss
 from data import FSPeptide
@@ -40,9 +41,10 @@ def main():
 
     encoder = Encoder(input_size=input_size, latent_size=8)
     decoder = Decoder(latent_size=8, output_size=input_size)
+    #decoder = FCDecoder(latent_size=8, output_size=input_size)
     vae = VAE(encoder, decoder)
 
-    print('decoder latent_size: {}'.format(decoder.latent_size))
+    #print('decoder latent_size: {}'.format(decoder.latent_size))
     print(vae)
 
     if use_cuda:
@@ -58,13 +60,13 @@ def main():
             inputs = data['cont_matrix']
             inputs = inputs.resize_(args.batch_size, 1, 21, 21)
             inputs = inputs.float()
-            print('input shape: {}'.format(inputs.shape))
+            #print('input shape: {}'.format(inputs.shape))
             if use_cuda:
                 inputs.cuda()
             inputs = Variable(inputs)
             optimizer.zero_grad()
             dec = vae(inputs)
-            print('dec shape {}'.format(dec.shape))
+            #print('dec shape {}'.format(dec.shape))
             ll = latent_loss(vae.z_mean, vae.z_sigma)
             loss = criterion(dec, inputs) + ll
             loss.backward()

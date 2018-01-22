@@ -67,12 +67,13 @@ class Encoder(nn.Module):
         -------
         A float tensor with shape (batch_size, latent_variable_size)
         """
-        print("input in encoder: {}".format(input))
+        #print("input in encoder: {}".format(input))
         # Transpose input to the shape of [batch_size, embed_size, seq_len]
         #input = torch.transpose(input, 1, 2)
 
         out = self.cnn_encoder(input)
-        print('output of cnn_encoder has shape {}'.format(out.shape))
+        #print('output of cnn_encoder has shape {}'.format(out.shape))
         out = out.view(out.size(0), -1)
         out = self.fc(out)
+        #print('output of encoder fc layer has shape {}'.format(out.shape))
         return out
