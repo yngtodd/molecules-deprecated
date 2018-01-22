@@ -66,6 +66,8 @@ def objective(params):
     for epoch in range(100):
         for i, data in enumerate(trainloader, 0):
             inputs = data['cont_matrix']
+            inputs = inputs.resize_(args.batch_size, 1, 21, 21)
+            inputs = inputs.float()
             if use_cuda:
                 inputs.cuda()
             inputs = Variable(inputs)

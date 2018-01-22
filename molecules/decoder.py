@@ -79,7 +79,7 @@ class Decoder(nn.Module):
         out = self.cnn_decoder2(out)
         out = self.cnn_decoder3(out)
         out = self.cnn_decoder4(out)
-        print('output of cnn_decoder 4 has shape {}'.format(out))
+        print('output of cnn_decoder 4 has shape {}'.format(out.shape))
         out = out.view(out.size(0), -1)
         out = self.fc2(out)
         return out
