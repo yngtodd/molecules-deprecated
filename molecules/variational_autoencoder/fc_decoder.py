@@ -1,13 +1,12 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class FCDecoder(nn.Module):
     def __init__(self, latent_size, output_size):
         super(FCDecoder, self).__init__()
         """
-        Simple full connected decoder.
+        Simple fully connected decoder.
         """
         self.latent_size = latent_size
         self.output_size = output_size
