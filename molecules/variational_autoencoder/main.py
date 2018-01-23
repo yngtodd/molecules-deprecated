@@ -20,13 +20,11 @@ parser.add_argument('--batch_size', type=int, default=128, help='data batch size
 parser.add_argument('--use_cuda', type=bool, default=True, help='Whether to use cuda.')
 args = parser.parse_args()
 
-# if args.use_cuda == True & torch.cuda.is_available() == False:
-#     print("Cuda not available, using CPU!")
-#     use_cuda = False
-# else:
-#     use_cuda = True
-
-use_cuda = False
+if args.use_cuda == True & torch.cuda.is_available() == False:
+    print("Cuda not available, using CPU!")
+    use_cuda = False
+else:
+    use_cuda = True
 
 train_data = FSPeptide(data='/Users/youngtodd/data/fspeptide/train.npy',
                        labels='/Users/youngtodd/data/fspeptide/y_train.npy')
