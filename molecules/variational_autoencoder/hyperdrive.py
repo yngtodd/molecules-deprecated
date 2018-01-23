@@ -51,20 +51,24 @@ def objective(params):
                       kernel2=enc_kernel2, kernel3=enc_kernel3)
 
     if use_cuda:
-        encoder.cuda()
+        encoder = encoder.cuda()
 
     decoder = Decoder(latent_dim=8, output_size=input_size, kernel1=dec_kernel1,
                       kernel2=dec_kernel2, kernel3=dec_kernel3)
 
     if use_cuda:
-        decoder.cuda()
+        deconder = decoder.cuda()
 
     vae = VAE(encoder, decoder)
 
     if use_cuda:
-        vae.cuda()
+        vae = vae.cuda()
 
     criterion = nn.MSELoss()
+
+    if use_cuda:
+        criterion = criterion.cuda()
+
     optimizer = optim.Adam(vae.parameters(), lr=0.0001)
 
     epoch_loss = 0
@@ -75,7 +79,7 @@ def objective(params):
             inputs = inputs.resize_(args.batch_size, 1, 21, 21)
             inputs = inputs.float()
             if use_cuda:
-                inputs.cuda()
+                inputs = inputs.cuda()
             inputs = Variable(inputs)
             optimizer.zero_grad()
             dec = vae(inputs)

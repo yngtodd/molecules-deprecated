@@ -40,19 +40,23 @@ def main():
     encoder = Encoder(input_size=input_size, latent_size=8)
 
     if use_cuda:
-        encoder.cuda()
+        encoder = encoder.cuda()
 
     decoder = Decoder(latent_size=8, output_size=input_size)
 
     if use_cuda:
-        decoder.cuda()
+        decoder = decoder.cuda()
 
     vae = VAE(encoder, decoder)
 
     if use_cuda:
-        vae.cuda()
+        vae = vae.cuda()
 
     criterion = nn.MSELoss()
+
+    if use_cuda:
+        criterion = criterion.cuda()
+
     optimizer = optim.Adam(vae.parameters(), lr=0.0001)
 
     epoch_loss = 0
@@ -63,7 +67,7 @@ def main():
             inputs = inputs.resize_(args.batch_size, 1, 21, 21)
             inputs = inputs.float()
             if use_cuda:
-                inputs.cuda()
+                inputs = inputs.cuda()
             inputs = Variable(inputs)
             optimizer.zero_grad()
             dec = vae(inputs)
