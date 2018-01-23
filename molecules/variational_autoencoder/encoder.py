@@ -29,28 +29,22 @@ class Encoder(nn.Module):
         self.stride3 = stride3
         self.kernel4 = kernel4
         self.stride4 = stride4
-        self.kernel5 = kernel5
-        self.stride5 = stride5
 
         self.cnn_encoder = nn.Sequential(
             nn.Conv2d(1, 32, self.kernel1, self.stride1, padding=2),
-            nn.MaxPool2d(2),
+            nn.AdaptiveMaxPool2d(2),
             nn.ELU(),
 
             nn.Conv2d(32, 64, self.kernel2, self.stride2, padding=2),
-            nn.MaxPool2d(2),
+            nn.AdaptiveMaxPool2d(2),
             nn.ELU(),
 
             nn.Conv2d(64, 64, self.kernel3, self.stride3, padding=2),
-            nn.MaxPool2d(2),
+            nn.AdaptiveMaxPool2d(2),
             nn.ELU(),
 
             nn.Conv2d(64, 64, self.kernel4, self.stride4, padding=2),
-            nn.MaxPool2d(2),
-            nn.ELU(),
-
-            nn.Conv2d(64, 32, self.kernel5, self.stride5),
-            nn.AdaptiveMaxPool2d(32),
+            nn.AdaptiveMaxPool2d(2),
             nn.ELU()
         )
 
