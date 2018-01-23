@@ -4,8 +4,7 @@ import torch.nn as nn
 
 class Encoder(nn.Module):
     def __init__(self, input_size, latent_size, kernel1=4, stride1=1, kernel2=4,
-                 stride2=1, kernel3=4, stride3=1, kernel4=4, stride4=1,
-                 kernel5=4, stride5=1):
+                 stride2=1, kernel3=4, stride3=1, kernel4=4, stride4=1)
         super(Encoder, self).__init__()
         """
         Parameters:
@@ -32,19 +31,19 @@ class Encoder(nn.Module):
 
         self.cnn_encoder = nn.Sequential(
             nn.Conv2d(1, 32, self.kernel1, self.stride1, padding=2),
-            nn.AdaptiveMaxPool2d(2),
+            nn.AdaptiveMaxPool2d(32),
             nn.ELU(),
 
             nn.Conv2d(32, 64, self.kernel2, self.stride2, padding=2),
-            nn.AdaptiveMaxPool2d(2),
+            nn.AdaptiveMaxPool2d(64),
             nn.ELU(),
 
             nn.Conv2d(64, 64, self.kernel3, self.stride3, padding=2),
-            nn.AdaptiveMaxPool2d(2),
+            nn.AdaptiveMaxPool2d(64),
             nn.ELU(),
 
             nn.Conv2d(64, 64, self.kernel4, self.stride4, padding=2),
-            nn.AdaptiveMaxPool2d(2),
+            nn.AdaptiveMaxPool2d(64),
             nn.ELU()
         )
 
