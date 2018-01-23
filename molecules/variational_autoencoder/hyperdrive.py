@@ -50,8 +50,14 @@ def objective(params):
     encoder = Encoder(input_size=input_dim, latent_size=8, kernel1=enc_kernel1,
                       kernel2=enc_kernel2, kernel3=enc_kernel3)
 
+    if use_cuda:
+        encoder.cuda()
+
     decoder = Decoder(latent_dim=8, output_size=input_size, kernel1=dec_kernel1,
                       kernel2=dec_kernel2, kernel3=dec_kernel3)
+
+    if use_cuda:
+        decoder.cuda()
 
     vae = VAE(encoder, decoder)
 

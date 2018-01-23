@@ -40,12 +40,16 @@ def main():
     input_size = 441
 
     encoder = Encoder(input_size=input_size, latent_size=8)
-    decoder = Decoder(latent_size=8, output_size=input_size)
-    #decoder = FCDecoder(latent_size=8, output_size=input_size)
-    vae = VAE(encoder, decoder)
 
-    #print('decoder latent_size: {}'.format(decoder.latent_size))
-    print(vae)
+    if use_cuda:
+        encoder.cuda()
+
+    decoder = Decoder(latent_size=8, output_size=input_size)
+
+    if use_cuda:
+        decoder.cuda()
+
+    vae = VAE(encoder, decoder)
 
     if use_cuda:
         vae.cuda()
@@ -60,13 +64,11 @@ def main():
             inputs = data['cont_matrix']
             inputs = inputs.resize_(args.batch_size, 1, 21, 21)
             inputs = inputs.float()
-            #print('input shape: {}'.format(inputs.shape))
             if use_cuda:
                 inputs.cuda()
             inputs = Variable(inputs)
             optimizer.zero_grad()
             dec = vae(inputs)
-            #print('dec shape {}'.format(dec.shape))
             ll = latent_loss(vae.z_mean, vae.z_sigma)
             loss = criterion(dec, inputs) + ll
             loss.backward()
