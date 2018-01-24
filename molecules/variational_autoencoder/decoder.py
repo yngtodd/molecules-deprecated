@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class Decoder(nn.Module):
     def __init__(self, latent_size, output_size, kernel1=4, stride1=2, kernel2=4,
-                 stride2=2, kernel3=4, stride3=2, kernel4=4, stride4=2)
+                 stride2=2, kernel3=4, stride3=2, kernel4=4, stride4=2):
         super(Decoder, self).__init__()
         """
         Parameters:
@@ -33,29 +33,29 @@ class Decoder(nn.Module):
 
         self.cnn_decoder1 = nn.Sequential(
             nn.ConvTranspose2d(1, 16, self.kernel1, self.stride1, padding=2),
-            nn.MaxPool2d(16),
+            nn.AdaptiveMaxPool2d(16),
             nn.ELU()
         )
 
         self.cnn_decoder2 = nn.Sequential(
             nn.ConvTranspose2d(16, 32, self.kernel2, self.stride2),
-            nn.MaxPool2d(32),
+            nn.AdaptiveMaxPool2d(32),
             nn.ELU()
         )
 
         self.cnn_decoder3 = nn.Sequential(
             nn.ConvTranspose2d(32, 64, self.kernel3, self.stride3),
-            nn.MaxPool2d(64),
+            nn.AdaptiveMaxPool2d(64),
             nn.ELU()
         )
 
         self.cnn_decoder4 = nn.Sequential(
             nn.ConvTranspose2d(64, 64, self.kernel4, self.stride4),
-            nn.MaxPool2d(64),
+            nn.AdaptiveMaxPool2d(64),
             nn.ELU()
         )
 
-        self.fc2 = nn.Linear(20736, self.output_size)
+        self.fc2 = nn.Linear(262144, self.output_size)
 
     def forward(self, latent_input):
         """
@@ -75,4 +75,5 @@ class Decoder(nn.Module):
         out = self.cnn_decoder4(out)
         out = out.view(out.size(0), -1)
         out = self.fc2(out)
+        print("output of decoder has shape {}".format(out.shape))
         return out

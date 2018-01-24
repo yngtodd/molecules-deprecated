@@ -73,6 +73,7 @@ def main():
             inputs = Variable(inputs)
             optimizer.zero_grad()
             dec = vae(inputs)
+            print('dec has shape {}'.format(dec.shape))
             ll = latent_loss(vae.z_mean, vae.z_sigma)
             loss = criterion(dec, inputs) + ll
             loss.backward()

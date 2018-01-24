@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class Encoder(nn.Module):
     def __init__(self, input_size, latent_size, kernel1=4, stride1=1, kernel2=4,
-                 stride2=1, kernel3=4, stride3=1, kernel4=4, stride4=1)
+                 stride2=1, kernel3=4, stride3=1, kernel4=4, stride4=1):
         super(Encoder, self).__init__()
         """
         Parameters:
@@ -47,7 +47,7 @@ class Encoder(nn.Module):
             nn.ELU()
         )
 
-        self.fc = nn.Linear(64*2*2, 8)
+        self.fc = nn.Linear(262144, 8) # 64*2*2
 
 
     def forward(self, input):
