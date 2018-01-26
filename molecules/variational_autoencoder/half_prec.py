@@ -91,12 +91,12 @@ def main():
 
         if epoch < 10:
             # Get latent encoding
-            latent_array = encoder(inputs).data[0].cpu().numpy()
+            latent_array = encoder(inputs).data[0].cpu().float().numpy()
             filename = 'latent_epoch' + str(epoch)
             np.save('./latent_saves/' + filename, latent_array)
 
             # Get reconstructed image
-            reconstructed_array = vae(inputs).data[0].cpu().numpy().reshape(21, 21)
+            reconstructed_array = vae(inputs).data[0].cpu().float().numpy().reshape(21, 21)
             recon_filename = 'reconstructed_epoch' + str(epoch)
             np.save('./reconstruct_saves/' + recon_filename, reconstructed_array)
 
