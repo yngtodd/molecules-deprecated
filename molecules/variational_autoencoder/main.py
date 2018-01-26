@@ -20,7 +20,7 @@ parser.add_argument('--batch_size', type=int, default=128, help='data batch size
 parser.add_argument('--use_cuda', type=bool, default=True, help='Whether to use cuda.')
 parser.add_argument('--log_interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
-parser.add_argument('--save_path', type=str, default='/home/ygx/molecules/molecules/variational_autoencoder/saves_sgd/',
+parser.add_argument('--save_path', type=str, default='/home/ygx/molecules/molecules/variational_autoencoder/save_points/saves_latent3/',
                     help='Path to where to save the model weights.')
 args = parser.parse_args()
 
@@ -39,13 +39,13 @@ def main():
     # Contact matrices are 21x21
     input_size = 441 
 
-    encoder = Encoder(input_size=input_size, latent_size=8)
+    encoder = Encoder(input_size=input_size, latent_size=3)
     #encoder = nn.DataParallel(encoder, device_ids=None)
 
     if use_cuda:
         encoder = encoder.cuda()
 
-    decoder = Decoder(latent_size=8, output_size=input_size)
+    decoder = Decoder(latent_size=3, output_size=input_size)
     #decoder = nn.DataParallel(decoder, device_ids=None)
 
     if use_cuda:
@@ -62,7 +62,7 @@ def main():
     if use_cuda:
         criterion = criterion.cuda()
 
-    optimizer = optim.SGD(vae.parameters(), lr = 0.01, momentum=0.9)
+    optimizer = optim.SGD(vae.parameters(), lr = 0.01)
 
     epoch_loss = 0
     total_loss = 0

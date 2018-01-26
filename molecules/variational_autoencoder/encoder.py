@@ -47,7 +47,7 @@ class Encoder(nn.Module):
             nn.ELU()
         )
 
-        self.fc = nn.Linear(128, 8) # 64*2*2
+        self.fc = nn.Linear(128, self.latent_size) # 64*2*2
 
 
     def forward(self, input):
