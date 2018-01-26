@@ -18,9 +18,3 @@ def plot_sample(model, inputs, image_dims=21):
     """
     # Getting started...
     plt.imshow(model(inputs).data[0].numpy().reshape(image_dims, image_dims), cmap='inferno')
-
-
-def plot_latent():
-    """
-    Plot the latent space of the variational autoencoder.
-    """
