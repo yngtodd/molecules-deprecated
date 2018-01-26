@@ -21,12 +21,6 @@ parser.add_argument('--use_cuda', type=bool, default=True, help='Whether to use 
 parser.add_argument('--deadline', type=int, default=14400, help='Deadline (seconds) to finish within.')
 args = parser.parse_args()
 
-if args.use_cuda == True & torch.cuda.is_available() == False:
-    print("Cuda not available, using CPU!")
-    use_cuda = False
-
-# Contact matrices are 21x21
-input_dim = 441
 
 train_data = FSPeptide(data='/Users/youngtodd/data/fspeptide/train.npy',
                        labels='/Users/youngtodd/data/fspeptide/y_train.npy')
@@ -45,28 +39,24 @@ def objective(params):
     dec_kernel1 = int(params[3])
     dec_kernel2 = int(params[4])
     dec_kernel3 = int(params[5])
-
+    
+    # Contact matrices are 21x21
+    input_dim = 441
 
     encoder = Encoder(input_size=input_dim, latent_size=8, kernel1=enc_kernel1,
                       kernel2=enc_kernel2, kernel3=enc_kernel3)
 
-    if use_cuda:
-        encoder = encoder.cuda()
-
     decoder = Decoder(latent_dim=8, output_size=input_size, kernel1=dec_kernel1,
                       kernel2=dec_kernel2, kernel3=dec_kernel3)
 
-    if use_cuda:
-        deconder = decoder.cuda()
-
     vae = VAE(encoder, decoder)
-
-    if use_cuda:
-        vae = vae.cuda()
-
     criterion = nn.MSELoss()
 
+    use_cuda = args.use_cuda
     if use_cuda:
+        encoder = encoder.cuda()
+        deconder = decoder.cuda()
+        vae = vae.cuda()
         criterion = criterion.cuda()
 
     optimizer = optim.Adam(vae.parameters(), lr=0.0001)
