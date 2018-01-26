@@ -26,7 +26,7 @@ parser.add_argument('--save_path', type=str, default='/home/ygx/molecules/molecu
                     help='Path to where to save the model weights.')
 args = parser.parse_args()
 
-use_cuda = True
+use_cuda = args.use_cuda 
 
 #train_data = FSPeptide(data='/home/ygx/data/fspeptide/train.npy',
 #                       labels='/home/ygx/data/fspeptide/y_train.npy')
@@ -42,26 +42,14 @@ def main():
     input_size = 441
 
     encoder = Encoder(input_size=input_size, latent_size=3)
-    #encoder = nn.DataParallel(encoder, device_ids=None)
-
-    if use_cuda:
-        encoder = encoder.cuda().half()
-
     decoder = Decoder(latent_size=3, output_size=input_size)
-    #decoder = nn.DataParallel(decoder, device_ids=None)
-
-    if use_cuda:
-        decoder = decoder.cuda().half()
-
     vae = VAE(encoder, decoder, use_cuda=use_cuda)
-    #vae = nn.DataParallel(vae, device_ids=None)
-
-    if use_cuda:
-        vae = vae.cuda().half()
-
     criterion = nn.MSELoss()
 
     if use_cuda:
+        encoder = encoder.cuda().half()
+        decoder = decoder.cuda().half()
+        vae = vae.cuda().half()
         criterion = criterion.cuda().half()
 
     optimizer = optim.SGD(vae.parameters(), lr = 0.01)
