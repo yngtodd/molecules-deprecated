@@ -35,3 +35,32 @@ class FSPeptide(Dataset):
             sample = self.transform(sample)
 
         return sample
+
+
+class UnlabeledContact(Dataset):
+    """
+    Contact matrix datasets without labels.
+    """
+    def __init__(self, data, transform=None):
+        """
+        Parameters:
+        ----------
+        data : str
+            Path to the data in numpy format.
+        transform : callable, optional
+            Optional transform to be applied on a sample.
+        """
+        self.data = np.load(data)
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, index):
+        cont_mat = self.data[index]
+        sample = {'cont_matrix': cont_mat}
+
+        if self.transform:
+            sample = self.transform(sample)
+
+        return sample

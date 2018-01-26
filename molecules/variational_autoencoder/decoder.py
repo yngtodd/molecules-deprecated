@@ -38,24 +38,24 @@ class Decoder(nn.Module):
         )
 
         self.cnn_decoder2 = nn.Sequential(
-            nn.ConvTranspose2d(16, 32, self.kernel2, self.stride2),
-            nn.AdaptiveMaxPool2d(32),
+            nn.ConvTranspose2d(16, 16, self.kernel2, self.stride2),
+            nn.AdaptiveMaxPool2d(16),
             nn.ELU()
         )
 
         self.cnn_decoder3 = nn.Sequential(
-            nn.ConvTranspose2d(32, 64, self.kernel3, self.stride3),
-            nn.AdaptiveMaxPool2d(64),
+            nn.ConvTranspose2d(16, 32, self.kernel3, self.stride3),
+            nn.AdaptiveMaxPool2d(32),
             nn.ELU()
         )
 
         self.cnn_decoder4 = nn.Sequential(
-            nn.ConvTranspose2d(64, 64, self.kernel4, self.stride4),
-            nn.AdaptiveMaxPool2d(64),
+            nn.ConvTranspose2d(32, 32, self.kernel4, self.stride4),
+            nn.AdaptiveMaxPool2d(2),
             nn.ELU()
         )
 
-        self.fc2 = nn.Linear(262144, self.output_size)
+        self.fc2 = nn.Linear(128, self.output_size)
 
     def forward(self, latent_input):
         """
@@ -73,7 +73,7 @@ class Decoder(nn.Module):
         out = self.cnn_decoder2(out)
         out = self.cnn_decoder3(out)
         out = self.cnn_decoder4(out)
+        #print('output size of decoder 4 {}'.format(out.size()))
         out = out.view(out.size(0), -1)
         out = self.fc2(out)
-        print("output of decoder has shape {}".format(out.shape))
         return out

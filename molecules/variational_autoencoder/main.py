@@ -10,26 +10,26 @@ from fc_decoder import FCDecoder
 from vae import VAE
 from vae import latent_loss
 from data import FSPeptide
+from data import UnlabeledContact 
 
 import argparse
-from hyperspace import hyperdrive
 
 
 parser = argparse.ArgumentParser(description='Setup experiment.')
 parser.add_argument('--batch_size', type=int, default=128, help='data batch size.')
 parser.add_argument('--use_cuda', type=bool, default=True, help='Whether to use cuda.')
+parser.add_argument('--log_interval', type=int, default=10, metavar='N',
+                    help='how many batches to wait before logging training status')
+parser.add_argument('--save_path', type=str, default='/home/ygx/molecules/molecules/variational_autoencoder/saves_sgd/',
+                    help='Path to where to save the model weights.')
 args = parser.parse_args()
 
-#if args.use_cuda == True & torch.cuda.is_available() == False:
-#    print("Cuda not available, using CPU!")
-#    use_cuda = False
-#else:
-#    use_cuda = True
+use_cuda = True 
 
-use_cuda = False
+#train_data = FSPeptide(data='/home/ygx/data/fspeptide/train.npy',
+#                       labels='/home/ygx/data/fspeptide/y_train.npy')
 
-train_data = FSPeptide(data='/Users/youngtodd/data/fspeptide/train.npy',
-                       labels='/Users/youngtodd/data/fspeptide/y_train.npy')
+train_data = UnlabeledContact(data='/home/ygx/data/fspeptide/fs_peptide.npy')
 
 print('Number of samples: {}'.format(len(train_data)))
 trainloader = DataLoader(train_data, batch_size=args.batch_size)
@@ -37,19 +37,22 @@ trainloader = DataLoader(train_data, batch_size=args.batch_size)
 
 def main():
     # Contact matrices are 21x21
-    input_size = 441
+    input_size = 441 
 
     encoder = Encoder(input_size=input_size, latent_size=8)
+    #encoder = nn.DataParallel(encoder, device_ids=None)
 
     if use_cuda:
         encoder = encoder.cuda()
 
     decoder = Decoder(latent_size=8, output_size=input_size)
+    #decoder = nn.DataParallel(decoder, device_ids=None)
 
     if use_cuda:
         decoder = decoder.cuda()
 
-    vae = VAE(encoder, decoder)
+    vae = VAE(encoder, decoder, use_cuda=use_cuda)
+    #vae = nn.DataParallel(vae, device_ids=None)
 
     if use_cuda:
         vae = vae.cuda()
@@ -59,12 +62,12 @@ def main():
     if use_cuda:
         criterion = criterion.cuda()
 
-    optimizer = optim.Adam(vae.parameters(), lr=0.0001)
+    optimizer = optim.SGD(vae.parameters(), lr = 0.01, momentum=0.9)
 
     epoch_loss = 0
     total_loss = 0
     for epoch in range(100):
-        for i, data in enumerate(trainloader):
+        for batch_idx, data in enumerate(trainloader):
             inputs = data['cont_matrix']
             inputs = inputs.resize_(args.batch_size, 1, 21, 21)
             inputs = inputs.float()
@@ -73,16 +76,19 @@ def main():
             inputs = Variable(inputs)
             optimizer.zero_grad()
             dec = vae(inputs)
-            print('dec has shape {}'.format(dec.shape))
             ll = latent_loss(vae.z_mean, vae.z_sigma)
             loss = criterion(dec, inputs) + ll
             loss.backward()
             optimizer.step()
-            epoch_loss = loss.data[0]
-        print(epoch, epoch_loss)
-        total_loss += epoch_loss
+            epoch_loss += loss.data[0]
 
-    return total_loss
+            if batch_idx % args.log_interval == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, batch_idx * len(data), len(trainloader.dataset),
+                    100. * batch_idx / len(trainloader), loss.data[0]))
+        
+        if epoch % 10 == 0:
+            torch.save(vae.state_dict(), args.save_path + 'epoch' + str(epoch))
 
 
 if __name__ == '__main__':

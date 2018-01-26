@@ -30,24 +30,24 @@ class Encoder(nn.Module):
         self.stride4 = stride4
 
         self.cnn_encoder = nn.Sequential(
-            nn.Conv2d(1, 32, self.kernel1, self.stride1, padding=2),
+            nn.Conv2d(1, 16, self.kernel1, self.stride1, padding=2),
+            nn.AdaptiveMaxPool2d(16),
+            nn.ELU(),
+
+            nn.Conv2d(16, 16, self.kernel2, self.stride2, padding=2),
+            nn.AdaptiveMaxPool2d(16),
+            nn.ELU(),
+
+            nn.Conv2d(16, 32, self.kernel3, self.stride3, padding=2),
             nn.AdaptiveMaxPool2d(32),
             nn.ELU(),
 
-            nn.Conv2d(32, 64, self.kernel2, self.stride2, padding=2),
-            nn.AdaptiveMaxPool2d(64),
-            nn.ELU(),
-
-            nn.Conv2d(64, 64, self.kernel3, self.stride3, padding=2),
-            nn.AdaptiveMaxPool2d(64),
-            nn.ELU(),
-
-            nn.Conv2d(64, 64, self.kernel4, self.stride4, padding=2),
-            nn.AdaptiveMaxPool2d(64),
+            nn.Conv2d(32, 32, self.kernel4, self.stride4, padding=2),
+            nn.AdaptiveMaxPool2d(2),
             nn.ELU()
         )
 
-        self.fc = nn.Linear(262144, 8) # 64*2*2
+        self.fc = nn.Linear(128, 8) # 64*2*2
 
 
     def forward(self, input):
@@ -61,6 +61,7 @@ class Encoder(nn.Module):
         A float tensor with shape (batch_size, latent_variable_size)
         """
         out = self.cnn_encoder(input)
+        #print('output size of encoder: {}'.format(out.size()))
         out = out.view(out.size(0), -1)
         out = self.fc(out)
         return out
