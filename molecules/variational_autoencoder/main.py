@@ -12,6 +12,7 @@ from vae import latent_loss
 from data import FSPeptide
 from data import UnlabeledContact 
 
+import numpy as np
 import argparse
 
 
@@ -86,9 +87,28 @@ def main():
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(trainloader.dataset),
                     100. * batch_idx / len(trainloader), loss.data[0]))
+       
+        if epoch < 10:
+            # Get latent encoding
+            latent_array = encoder(inputs).data[0].cpu().numpy()
+            filename = 'latent_epoch' + str(epoch)
+            np.save('./latent_saves/' + filename, latent_array)
+            
+            # Get reconstructed image
+            reconstructed_array = vae(inputs).data[0].cpu().numpy().reshape(21, 21)
+            recon_filename = 'reconstructed_epoch' + str(epoch)
+            np.save('./reconstruct_saves/' + recon_filename, reconstructed_array)
         
         if epoch % 10 == 0:
             torch.save(vae.state_dict(), args.save_path + 'epoch' + str(epoch))
+
+            latent_array = encoder(inputs).data[0].cpu().numpy()
+            filename = 'latent_epoch' + str(epoch)
+            np.save('./latent_saves/' + filename, latent_array)
+
+            reconstructed_array = vae(inputs).data[0].cpu().numpy().reshape(21, 21)
+            recon_filename = 'reconstructed_epoch' + str(epoch)
+            np.save('./reconstruct_saves/' + recon_filename, reconstructed_array)
 
 
 if __name__ == '__main__':
