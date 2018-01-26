@@ -25,18 +25,14 @@ parser.add_argument('--save_path', type=str, default='/home/ygx/molecules/molecu
                     help='Path to where to save the model weights.')
 args = parser.parse_args()
 
-use_cuda = args.use_cuda 
-
-#train_data = FSPeptide(data='/home/ygx/data/fspeptide/train.npy',
-#                       labels='/home/ygx/data/fspeptide/y_train.npy')
-
-train_data = UnlabeledContact(data='/home/ygx/data/fspeptide/fs_peptide.npy')
-
-print('Number of samples: {}'.format(len(train_data)))
-trainloader = DataLoader(train_data, batch_size=args.batch_size)
-
 
 def main():
+    use_cuda = args.use_cuda
+
+    train_data = UnlabeledContact(data='/home/ygx/data/fspeptide/fs_peptide.npy')
+    print('Number of samples: {}'.format(len(train_data)))
+    trainloader = DataLoader(train_data, batch_size=args.batch_size)
+
     # Contact matrices are 21x21
     input_size = 441 
 
