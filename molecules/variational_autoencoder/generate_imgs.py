@@ -63,10 +63,11 @@ def main():
             inputs = inputs.cuda()
         inputs = Variable(inputs)
 
-        latent_array = encoder(inputs).data[0].cpu().numpy()
+        latent_array = encoder(inputs).data.cpu().numpy()
+        #print('latent_array has shape {}'.format(latent_array.shape))
         latent_arrys.append(latent_array)
 
-        reconstructed_array = vae(inputs).data[0].cpu().numpy()
+        reconstructed_array = vae(inputs).data.cpu().numpy()
         recon_arrys.append(reconstructed_array)
         
         if batch_idx % 100 == 0:
