@@ -66,12 +66,13 @@ def main():
         latent_array = encoder(inputs).data[0].cpu().numpy()
         latent_arrys.append(latent_array)
 
-        reconstructed_array = vae(inputs).data[0].cpu().numpy().reshape(21, 21)
+        reconstructed_array = vae(inputs).data[0].cpu().numpy()
         recon_arrys.append(reconstructed_array)
         
-        if batch_idx % 1000 == 0:
+        if batch_idx % 100 == 0:
             print('Saving progress: {:.3f}%'.format(batch_idx * 100. / len(trainloader)))
- 
+
+    print('\nNumber of images prepared: {}'.format(len(latent_arrys))) 
     latent_stacked = np.stack(latent_arrys, axis=0) 
     latent_filename = 'latent_imgs' 
     np.save(args.latent_save_path + latent_filename, latent_stacked)
