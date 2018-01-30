@@ -22,7 +22,7 @@ parser.add_argument('--batch_size', type=int, default=128, help='data batch size
 parser.add_argument('--use_cuda', type=bool, default=True, help='Whether to use cuda.')
 parser.add_argument('--log_interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
-parser.add_argument('--save_path', type=str, default='/home/ygx/molecules/molecules/variational_autoencoder/save_points/saves_latent3/',
+parser.add_argument('--save_path', type=str, default='./save_points/kl_bce_latent3/',
                     help='Path to where to save the model weights.')
 args = parser.parse_args()
 
@@ -77,23 +77,23 @@ def main():
             # Get latent encoding
             latent_array = encoder(inputs).data[0].cpu().numpy()
             filename = 'latent_epoch' + str(epoch)
-            np.save('./latent_saves/' + filename, latent_array)
+            np.save('./latent_saves/kl_bce_latent3/' + filename, latent_array)
             
             # Get reconstructed image
             reconstructed_array = vae(inputs).data[0].cpu().numpy().reshape(21, 21)
             recon_filename = 'reconstructed_epoch' + str(epoch)
-            np.save('./reconstruct_saves/' + recon_filename, reconstructed_array)
+            np.save('./reconstruct_saves/kl_bce_latent3/' + recon_filename, reconstructed_array)
         
         if epoch % 10 == 0:
             torch.save(vae.state_dict(), args.save_path + 'epoch' + str(epoch))
 
             latent_array = encoder(inputs).data[0].cpu().numpy()
             filename = 'latent_epoch' + str(epoch)
-            np.save('./latent_saves/' + filename, latent_array)
+            np.save('./latent_saves/kl_bce_latent3/' + filename, latent_array)
 
             reconstructed_array = vae(inputs).data[0].cpu().numpy().reshape(21, 21)
             recon_filename = 'reconstructed_epoch' + str(epoch)
-            np.save('./reconstruct_saves/' + recon_filename, reconstructed_array)
+            np.save('./reconstruct_saves/kl_bce_latent3/' + recon_filename, reconstructed_array)
 
 
 if __name__ == '__main__':
