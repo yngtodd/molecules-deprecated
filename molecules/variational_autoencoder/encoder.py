@@ -32,19 +32,19 @@ class Encoder(nn.Module):
         self.cnn_encoder = nn.Sequential(
             nn.Conv2d(1, 16, self.kernel1, self.stride1, padding=2),
             nn.AdaptiveMaxPool2d(16),
-            nn.ELU(),
+            nn.SELU(),
 
             nn.Conv2d(16, 16, self.kernel2, self.stride2, padding=2),
             nn.AdaptiveMaxPool2d(16),
-            nn.ELU(),
+            nn.SELU(),
 
             nn.Conv2d(16, 32, self.kernel3, self.stride3, padding=2),
             nn.AdaptiveMaxPool2d(32),
-            nn.ELU(),
+            nn.SELU(),
 
             nn.Conv2d(32, 32, self.kernel4, self.stride4, padding=2),
             nn.AdaptiveMaxPool2d(2),
-            nn.ELU()
+            nn.SELU()
         )
 
         self.fc = nn.Linear(128, self.latent_size) # 64*2*2

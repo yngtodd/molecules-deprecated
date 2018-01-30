@@ -34,9 +34,10 @@ args = parser.parse_args()
 
 def main():
     use_cuda = args.use_cuda
+    print("Cuda set to {} | Cuda availability: {}".format(use_cuda, torch.cuda.is_available()))
 
     experiment = "vae_latent3"
-    logger = SummaryWriter(comment=experiment)
+    logger = SummaryWriter(log_dir='./logs', comment=experiment)
 
     train_data = UnlabeledContact(data='/home/ygx/data/fspeptide/fs_peptide.npy')
     print('Number of samples: {}'.format(len(train_data)))
@@ -48,7 +49,7 @@ def main():
     encoder = Encoder(input_size=input_size, latent_size=3)
     decoder = Decoder(latent_size=3, output_size=input_size)
     vae = VAE(encoder, decoder, use_cuda=use_cuda)
-    criterion = nn.binary_cross_entropy()
+    criterion = nn.BCELoss()
 
     if use_cuda:
         encoder = encoder.cuda()
@@ -76,7 +77,7 @@ def main():
 
             # Measure the loss
             kl = kl_loss(vae.z_mean, vae.z_sigma)
-            loss = criterion(dec, inputs) + kl
+            loss = criterion(dec, inputs) #+ kl # Adding KL is caussing loss > 1
             losses.update(loss.data[0], inputs.size(0))
 
             # Compute the gradient
@@ -85,20 +86,21 @@ def main():
             epoch_loss += loss.data[0]
             
             # Logging
-            logger.add_graph(model, dec)
+            # Adding graph is a lot of overhead
+            #logger.add_graph_onnx(vae)
 
             # log loss values every iteration
-            logger.add_scalar('data/(train)loss_val', losses.val, i + 1)
-            logger.add_scalar('data/(train)loss_avg', losses.avg, i + 1)
+            logger.add_scalar('data/(train)loss_val', losses.val, batch_idx + 1)
+            logger.add_scalar('data/(train)loss_avg', losses.avg, batch_idx + 1)
 
             # log the layers and layers gradient histogram and distributions
-            for tag, value in model.named_parameters():
+            for tag, value in vae.named_parameters():
                 tag = tag.replace('.', '/')
-                logger.add_histogram('model/(train)' + tag, to_np(value), i + 1)
-                logger.add_histogram('model/(train)' + tag + '/grad', to_np(value.grad), i + 1)
+                logger.add_histogram('model/(train)' + tag, to_numpy(value), batch_idx + 1)
+                logger.add_histogram('model/(train)' + tag + '/grad', to_numpy(value.grad), batch_idx + 1)
 
             # log the outputs of the autoencoder 
-            logger.add_image('model/(train)output', make_grid(dec.data), i + 1)
+            logger.add_image('model/(train)output', make_grid(dec.data), batch_idx + 1)
 
             if batch_idx % args.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(

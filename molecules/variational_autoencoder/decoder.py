@@ -34,28 +34,31 @@ class Decoder(nn.Module):
         self.cnn_decoder1 = nn.Sequential(
             nn.ConvTranspose2d(1, 16, self.kernel1, self.stride1, padding=2),
             nn.AdaptiveMaxPool2d(16),
-            nn.ELU()
+            nn.SELU()
         )
 
         self.cnn_decoder2 = nn.Sequential(
             nn.ConvTranspose2d(16, 16, self.kernel2, self.stride2),
             nn.AdaptiveMaxPool2d(16),
-            nn.ELU()
+            nn.SELU()
         )
 
         self.cnn_decoder3 = nn.Sequential(
             nn.ConvTranspose2d(16, 32, self.kernel3, self.stride3),
             nn.AdaptiveMaxPool2d(32),
-            nn.ELU()
+            nn.SELU()
         )
 
         self.cnn_decoder4 = nn.Sequential(
             nn.ConvTranspose2d(32, 32, self.kernel4, self.stride4),
             nn.AdaptiveMaxPool2d(2),
-            nn.ELU()
+            nn.SELU()
         )
 
-        self.fc2 = nn.Linear(128, self.output_size)
+        self.fc2 = nn.Sequential(
+            nn.Linear(128, self.output_size),
+            nn.Sigmoid()
+       )                 
 
     def forward(self, latent_input):
         """
