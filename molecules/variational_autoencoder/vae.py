@@ -25,6 +25,10 @@ def latent_loss(z_mean, z_stddev):
     return 0.5 * torch.mean(mean_sq + stddev_sq - torch.log(stddev_sq) - 1)
 
 
+def kl_loss(z_mean, z_stddev):
+    return 0.5 * torch.sum(torch.exp(z_stddev**2) + z_mean**2 - 1. - z_stddev**2)
+
+
 class VAE(torch.nn.Module):
     latent_dim = 8
 
