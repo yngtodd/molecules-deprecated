@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
+from torchvision.utils import make_grid
 
 from encoder import Encoder
 from decoder import Decoder
@@ -12,6 +13,10 @@ from vae import latent_loss
 from vae import kl_loss
 from data import FSPeptide
 from data import UnlabeledContact 
+from utils import AverageMeter
+from utils import to_numpy
+
+from tensorboardX import SummaryWriter
 
 import numpy as np
 import argparse
@@ -29,6 +34,9 @@ args = parser.parse_args()
 
 def main():
     use_cuda = args.use_cuda
+
+    experiment = "vae_latent3"
+    logger = SummaryWriter(comment=experiment)
 
     train_data = UnlabeledContact(data='/home/ygx/data/fspeptide/fs_peptide.npy')
     print('Number of samples: {}'.format(len(train_data)))
@@ -50,6 +58,7 @@ def main():
 
     optimizer = optim.SGD(vae.parameters(), lr = 0.01)
 
+    losses = AverageMeter()
     epoch_loss = 0
     total_loss = 0
     for epoch in range(100):
@@ -60,13 +69,36 @@ def main():
             if use_cuda:
                 inputs = inputs.cuda()
             inputs = Variable(inputs)
+
+            # Compute output
             optimizer.zero_grad()
             dec = vae(inputs)
+
+            # Measure the loss
             kl = kl_loss(vae.z_mean, vae.z_sigma)
             loss = criterion(dec, inputs) + kl
+            losses.update(loss.data[0], inputs.size(0))
+
+            # Compute the gradient
             loss.backward()
             optimizer.step()
             epoch_loss += loss.data[0]
+            
+            # Logging
+            logger.add_graph(model, dec)
+
+            # log loss values every iteration
+            logger.add_scalar('data/(train)loss_val', losses.val, i + 1)
+            logger.add_scalar('data/(train)loss_avg', losses.avg, i + 1)
+
+            # log the layers and layers gradient histogram and distributions
+            for tag, value in model.named_parameters():
+                tag = tag.replace('.', '/')
+                logger.add_histogram('model/(train)' + tag, to_np(value), i + 1)
+                logger.add_histogram('model/(train)' + tag + '/grad', to_np(value.grad), i + 1)
+
+            # log the outputs of the autoencoder 
+            logger.add_image('model/(train)output', make_grid(dec.data), i + 1)
 
             if batch_idx % args.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -94,6 +126,8 @@ def main():
             reconstructed_array = vae(inputs).data[0].cpu().numpy().reshape(21, 21)
             recon_filename = 'reconstructed_epoch' + str(epoch)
             np.save('./reconstruct_saves/kl_bce_latent3/' + recon_filename, reconstructed_array)
+
+        logger.close()
 
 
 if __name__ == '__main__':
