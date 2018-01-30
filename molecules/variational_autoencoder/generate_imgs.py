@@ -20,15 +20,15 @@ parser = argparse.ArgumentParser(description='Setup experiment.')
 parser.add_argument('--input_size', type=int, default=441, help='flattened image size.')
 parser.add_argument('--latent_size', type=int, default=3, help='latent dimension')
 parser.add_argument('--batch_size', type=int, default=1, help='batch size for net')
-parser.add_argument('--use_cuda', type=bool, default=False, help='Whether to use cuda.')
+parser.add_argument('--use_cuda', type=bool, default=True, help='Whether to use cuda.')
 parser.add_argument('--model_path', type=str, default='/home/ygx/molecules/molecules/variational_autoencoder/save_points/saves_latent3/',
                     help='Path to saved model weights.')
-parser.add_argument('--model_name', type=str, default='epoch80.pt', help='name of the saved model')
+parser.add_argument('--model_name', type=str, default='epoch90.pt', help='name of the saved model')
 parser.add_argument('--latent_save_path', type=str, 
-                    default='/home/ygx/molecules/molecules/variational_autoencoder/generate_latent/fs_latent3_epoch80/', 
+                    default='/home/ygx/molecules/molecules/variational_autoencoder/generate_latent/fs_latent3_epoch90/', 
                     help='path to save generated latent dimensions')
 parser.add_argument('--recon_save_path', type=str, 
-                    default='/home/ygx/molecules/molecules/variational_autoencoder/generate_recon/fs_latent3_epoch80/', 
+                    default='/home/ygx/molecules/molecules/variational_autoencoder/generate_recon/fs_latent3_epoch90/', 
                     help='path to save reconstructed images')
 args = parser.parse_args()
 
