@@ -39,7 +39,7 @@ def main():
     encoder = Encoder(input_size=input_size, latent_size=3)
     decoder = Decoder(latent_size=3, output_size=input_size)
     vae = VAE(encoder, decoder, use_cuda=use_cuda)
-    criterion = nn.MSELoss()
+    criterion = nn.binary_cross_entropy()
 
     if use_cuda:
         encoder = encoder.cuda()
