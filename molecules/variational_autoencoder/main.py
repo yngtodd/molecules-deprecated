@@ -9,6 +9,7 @@ from decoder import Decoder
 from fc_decoder import FCDecoder
 from vae import VAE
 from vae import latent_loss
+from vae import kl_loss
 from data import FSPeptide
 from data import UnlabeledContact 
 
@@ -61,8 +62,8 @@ def main():
             inputs = Variable(inputs)
             optimizer.zero_grad()
             dec = vae(inputs)
-            ll = latent_loss(vae.z_mean, vae.z_sigma)
-            loss = criterion(dec, inputs) + ll
+            kl = kl_loss(vae.z_mean, vae.z_sigma)
+            loss = criterion(dec, inputs) + kl
             loss.backward()
             optimizer.step()
             epoch_loss += loss.data[0]
