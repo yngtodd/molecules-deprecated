@@ -80,7 +80,7 @@ def main():
             encoder = encoder.half()
             decoder = decoder.half()
             vae = vae.half()
-			
+
 	    optimizer = optim.SGD(vae.parameters(), lr = 0.001)
 
     losses = AverageMeter()
@@ -119,7 +119,7 @@ def main():
 
             # log loss values every iteration
             logger.add_scalar('data/(train)loss_val', losses.val, batch_idx + 1)
-			            logger.add_scalar('data/(train)loss_avg', losses.avg, batch_idx + 1)
+			logger.add_scalar('data/(train)loss_avg', losses.avg, batch_idx + 1)
 
             # log the layers and layers gradient histogram and distributions
             #for tag, value in vae.named_parameters():
@@ -135,7 +135,7 @@ def main():
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(trainloader.dataset),
                     100. * batch_idx / len(trainloader), loss.data[0]))
-				
+
 			        #if epoch < 10:
             # Get latent encoding
             #latent_array = encoder(inputs).data[0].cpu().numpy()

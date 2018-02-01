@@ -13,7 +13,7 @@ from vae import VAE
 from vae import latent_loss
 from vae import kl_loss
 from data import FSPeptide
-from data import UnlabeledContact 
+from data import UnlabeledContact
 from utils import AverageMeter
 from utils import to_numpy
 
@@ -41,7 +41,7 @@ def loss_function(recon_x, x, mu, logvar):
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     # Normalise by same number of elements as in reconstruction
-    KLD /= args.batch_size * 441 
+    KLD /= args.batch_size * 441
 
     return BCE + KLD
 
@@ -58,7 +58,7 @@ def main():
     trainloader = DataLoader(train_data, batch_size=args.batch_size)
 
     # Contact matrices are 21x21
-    input_size = 441 
+    input_size = 441
 
     encoder = Encoder(input_size=input_size, latent_size=3)
     decoder = Decoder(latent_size=3, output_size=input_size)
@@ -99,7 +99,7 @@ def main():
             loss.backward()
             optimizer.step()
             epoch_loss += loss.data[0]
-            
+
             # Logging
             # Adding graph is a lot of overhead
             #logger.add_graph_onnx(vae)
@@ -114,25 +114,25 @@ def main():
             #    logger.add_histogram('model/(train)' + tag, to_numpy(value), batch_idx + 1)
             #    logger.add_histogram('model/(train)' + tag + '/grad', to_numpy(value.grad), batch_idx + 1)
 
-            # log the outputs of the autoencoder 
+            # log the outputs of the autoencoder
             #logger.add_image('model/(train)output', make_grid(dec.data), batch_idx + 1)
 
             if batch_idx % args.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(trainloader.dataset),
                     100. * batch_idx / len(trainloader), loss.data[0]))
-       
+
         #if epoch < 10:
             # Get latent encoding
             #latent_array = encoder(inputs).data[0].cpu().numpy()
             #filename = 'latent_epoch' + str(epoch)
             #np.save('./latent_saves/kl_bce_latent3/' + filename, latent_array)
-            
+
             # Get reconstructed image
             #reconstructed_array = vae(inputs).data[0].cpu().numpy().reshape(21, 21)
             #recon_filename = 'reconstructed_epoch' + str(epoch)
             #np.save('./reconstruct_saves/kl_bce_latent3/' + recon_filename, reconstructed_array)
-        
+
         if epoch % 10 == 0:
             torch.save(vae.state_dict(), args.save_path + 'epoch' + str(epoch))
 
