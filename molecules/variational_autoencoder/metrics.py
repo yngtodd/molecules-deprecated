@@ -27,6 +27,7 @@ def entropy_kl_loss(recon_x, img, mu, logvar, batch_size, img_dimension):
     img_dimension : int
         Flattened image dimension.
         * number of pixels in image
+
     Returns:
     -------
     Binary cross entropy + KL divergence loss : float
