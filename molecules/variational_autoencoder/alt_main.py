@@ -18,6 +18,7 @@ from data import FSPeptide
 from data import UnlabeledContact
 from utils import AverageMeter
 from utils import to_numpy
+from metrics import entropy_kl_loss
 
 from tensorboardX import SummaryWriter
 
@@ -34,20 +35,6 @@ parser.add_argument('--log_interval', type=int, default=10, metavar='N',
 parser.add_argument('--save_path', type=str, default='./save_points/kl_bce_latent3/',
                     help='Path to where to save the model weights.')
 args = parser.parse_args()
-
-
-def loss_function(recon_x, x, mu, logvar):
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, 441))
-
-    # see Appendix B from VAE paper:
-    # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-    # https://arxiv.org/abs/1312.6114
-    # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    # Normalise by same number of elements as in reconstruction
-    KLD /= args.batch_size * 441
-
-    return BCE + KLD
 
 
 def main():
@@ -103,7 +90,7 @@ def main():
             recon_batch, mu, logvar = vae(inputs)
 
             # Measure the loss
-            loss = loss_function(recon_batch, inputs, mu, logvar)
+            loss = entropy_kl_loss(recon_batch, inputs, mu, logvar, args.batch_size, input_size)
             #kl = kl_loss(vae.z_mean, vae.z_sigma)
             #loss = criterion(dec, inputs) #+ kl # Adding KL is caussing loss > 1
             losses.update(loss.data[0], inputs.size(0))
