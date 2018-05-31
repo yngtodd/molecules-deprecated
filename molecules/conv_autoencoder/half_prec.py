@@ -41,16 +41,16 @@ def main():
     img_width = 21
 
     vae = AutoEncoder(code_size=20, imgsize=input_size, height=img_height, width=img_width)
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
 
     if use_cuda:
-        vae = nn.DataParallel(vae)
-        vae = vae.cuda().half()
+        #vae = nn.DataParallel(vae)
+        vae = vae.cuda()#.half()
         criterion = criterion.cuda()
 
     optimizer = optim.SGD(vae.parameters(), lr = 0.01)
 
-    clock = AverageMeter(name='clock16', rank=0)
+    clock = AverageMeter(name='clock32single', rank=0)
     epoch_loss = 0
     total_loss = 0
     end = time.time()
@@ -60,7 +60,7 @@ def main():
             inputs = inputs.resize_(args.batch_size, 1, 21, 21)
             inputs = inputs.float()
             if use_cuda:
-                inputs = inputs.cuda().half()
+                inputs = inputs.cuda()#.half()
             inputs = Variable(inputs)
             optimizer.zero_grad()
             output, code = vae(inputs)
@@ -77,7 +77,7 @@ def main():
                     epoch, batch_idx * len(data), len(trainloader.dataset),
                     100. * batch_idx / len(trainloader), loss.data[0]))
 
-    clock.save(path='/home/ygx/libraries/mds/molecules/molecules/linear_vae')
+    clock.save(path='/home/ygx/libraries/mds/molecules/molecules/conv_autoencoder/runtimes')
 
 if __name__ == '__main__':
     main()
