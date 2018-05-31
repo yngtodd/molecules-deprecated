@@ -49,7 +49,7 @@ class VAE(torch.nn.Module):
         sigma = torch.exp(log_sigma)
         std_z = torch.from_numpy(np.random.normal(0, 1, size=sigma.size())).float()
         if self.use_cuda:
-            std_z = std_z.cuda()#.half()
+            std_z = std_z.cuda().half()
 
         self.z_mean = mu
         self.z_sigma = sigma
