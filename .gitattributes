@@ -1,1 +1,8 @@
 data/* filter=lfs diff=lfs merge=lfs -text
+data/fspeptide/data/data.npy filter=lfs diff=lfs merge=lfs -text
+data/fspeptide/data/test.npy filter=lfs diff=lfs merge=lfs -text
+data/fspeptide/data/train.npy filter=lfs diff=lfs merge=lfs -text
+data/fspeptide/data/val.npy filter=lfs diff=lfs merge=lfs -text
+data/fspeptide/labels/y_val.npy filter=lfs diff=lfs merge=lfs -text
+data/fspeptide/labels/y_test.npy filter=lfs diff=lfs merge=lfs -text
+data/fspeptide/labels/y_train.npy filter=lfs diff=lfs merge=lfs -text
