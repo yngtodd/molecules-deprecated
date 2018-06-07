@@ -32,11 +32,12 @@ def kl_loss(z_mean, z_stddev):
 class VAE(torch.nn.Module):
     latent_dim = 8
 
-    def __init__(self, encoder, decoder, z_mean=0.0, z_sigma=0.0, use_cuda=True):
+    def __init__(self, encoder, decoder, z_mean=0.0, z_sigma=0.0, use_cuda=True, half_precision=False):
         super(VAE, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.use_cuda = use_cuda
+        self.half_precision = half_precision
         self.z_mean = z_mean
         self.z_sigma = z_sigma
 
@@ -49,7 +50,9 @@ class VAE(torch.nn.Module):
         sigma = torch.exp(log_sigma)
         std_z = torch.from_numpy(np.random.normal(0, 1, size=sigma.size())).float()
         if self.use_cuda:
-            std_z = std_z.cuda().half()
+            std_z = std_z.cuda()
+            if self.half_precision:
+                std_z = std_z.half()
 
         self.z_mean = mu
         self.z_sigma = sigma

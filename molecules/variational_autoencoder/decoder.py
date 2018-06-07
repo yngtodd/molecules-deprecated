@@ -32,19 +32,19 @@ class Decoder(nn.Module):
         self.fc = nn.Linear(self.latent_size, 256)
 
         self.cnn_decoder1 = nn.Sequential(
-            nn.ConvTranspose2d(1, 16, self.kernel1, self.stride1, padding=2),
-            nn.AdaptiveMaxPool2d(16),
+            nn.ConvTranspose2d(1, 32, self.kernel1, self.stride1, padding=2),
+            nn.AdaptiveMaxPool2d(32),
             nn.SELU()
         )
 
         self.cnn_decoder2 = nn.Sequential(
-            nn.ConvTranspose2d(16, 16, self.kernel2, self.stride2),
-            nn.AdaptiveMaxPool2d(16),
+            nn.ConvTranspose2d(32, 32, self.kernel2, self.stride2),
+            nn.AdaptiveMaxPool2d(32),
             nn.SELU()
         )
 
         self.cnn_decoder3 = nn.Sequential(
-            nn.ConvTranspose2d(16, 32, self.kernel3, self.stride3),
+            nn.ConvTranspose2d(32, 32, self.kernel3, self.stride3),
             nn.AdaptiveMaxPool2d(32),
             nn.SELU()
         )

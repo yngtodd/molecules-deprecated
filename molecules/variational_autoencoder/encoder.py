@@ -3,8 +3,8 @@ import torch.nn as nn
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_size, latent_size, kernel1=4, stride1=1, kernel2=4,
-                 stride2=1, kernel3=4, stride3=1, kernel4=4, stride4=1):
+    def __init__(self, input_size, latent_size, kernel1=3, stride1=1, kernel2=3,
+                 stride2=2, kernel3=3, stride3=1, kernel4=3, stride4=1):
         super(Encoder, self).__init__()
         """
         Parameters:
@@ -30,25 +30,25 @@ class Encoder(nn.Module):
         self.stride4 = stride4
 
         self.cnn_encoder = nn.Sequential(
-            nn.Conv2d(1, 16, self.kernel1, self.stride1, padding=2),
-            nn.AdaptiveMaxPool2d(16),
-            nn.SELU(),
-
-            nn.Conv2d(16, 16, self.kernel2, self.stride2, padding=2),
-            nn.AdaptiveMaxPool2d(16),
-            nn.SELU(),
-
-            nn.Conv2d(16, 32, self.kernel3, self.stride3, padding=2),
+            nn.Conv2d(1, 32, self.kernel1, self.stride1, padding=2),
             nn.AdaptiveMaxPool2d(32),
-            nn.SELU(),
+            nn.ReLU(),
+
+            nn.Conv2d(32, 32, self.kernel2, self.stride2, padding=2),
+            nn.AdaptiveMaxPool2d(32),
+            nn.ReLU(),
+
+            nn.Conv2d(32, 32, self.kernel3, self.stride3, padding=2),
+            nn.AdaptiveMaxPool2d(32),
+            nn.ReLU(),
 
             nn.Conv2d(32, 32, self.kernel4, self.stride4, padding=2),
             nn.AdaptiveMaxPool2d(2),
-            nn.SELU()
+            nn.ReLU()
         )
 
-        self.fc = nn.Linear(128, self.latent_size) # 64*2*2
-
+        self.fc_mu = nn.Linear(128, self.latent_size)
+        self.fc_logvar = nn.Linear(128, self.latent_size)
 
     def forward(self, input):
         """
@@ -63,5 +63,6 @@ class Encoder(nn.Module):
         out = self.cnn_encoder(input)
         #print('output size of encoder: {}'.format(out.size()))
         out = out.view(out.size(0), -1)
-        out = self.fc(out)
-        return out
+        mu = self.fc_mu(out)
+        logvar = self.fc_logvar(out)
+        return mu, logvar 

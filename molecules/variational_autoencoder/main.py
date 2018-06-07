@@ -26,6 +26,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Setup experiment.')
 parser.add_argument('--batch_size', type=int, default=128, help='data batch size.')
 parser.add_argument('--use_cuda', type=bool, default=True, help='Whether to use cuda.')
+parser.add_argument('--half_precision', type=bool, default=False, help='Whether to use half precision')
 parser.add_argument('--log_interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
 parser.add_argument('--save_path', type=str, default='./save_points/kl_bce_latent3/',
@@ -48,6 +49,7 @@ def loss_function(recon_x, x, mu, logvar):
 
 def main():
     use_cuda = args.use_cuda
+    half_precision = args.half_precision
     print("Cuda set to {} | Cuda availability: {}".format(use_cuda, torch.cuda.is_available()))
 
     experiment = "vae_latent3"
@@ -62,16 +64,20 @@ def main():
 
     encoder = Encoder(input_size=input_size, latent_size=3)
     decoder = Decoder(latent_size=3, output_size=input_size)
-    vae = VAE(encoder, decoder, use_cuda=use_cuda)
+    vae = VAE(encoder, decoder, use_cuda=use_cuda, half_precision=half_precision)
     #criterion = nn.BCELoss()
 
     if use_cuda:
-        encoder = encoder.cuda().half()
-        decoder = decoder.cuda().half()
-        vae = vae.cuda().half()
+        encoder = encoder.cuda()
+        decoder = decoder.cuda()
+        vae = vae.cuda()
         #criterion = criterion.cuda().half()
+        if half_precision:
+            encoder = encoder.half()
+            decoder = decoder.half()
+            vae = vae.half()
 
-    optimizer = optim.SGD(vae.parameters(), lr = 0.01)
+    optimizer = optim.SGD(vae.parameters(), lr = 0.001)
 
     losses = AverageMeter()
     epoch_loss = 0
@@ -82,7 +88,9 @@ def main():
             inputs = inputs.resize_(args.batch_size, 1, 21, 21)
             inputs = inputs.float()
             if use_cuda:
-                inputs = inputs.cuda().half()
+                inputs = inputs.cuda()
+                if half_precision:
+                    inputs = inputs.half()
             inputs = Variable(inputs)
 
             # Compute output
