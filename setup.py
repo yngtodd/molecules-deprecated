@@ -33,7 +33,7 @@ setup(
     author="Todd Young",
     author_email='youngmt1@ornl.gov',
     url='https://github.com/yngtodd/molecules',
-    packages=find_packages(include=['molecules']),
+    packages=find_packages(),
     include_package_data=True,
     install_requires=requirements,
     license="MIT license",
