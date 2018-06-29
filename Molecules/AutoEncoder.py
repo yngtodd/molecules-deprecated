@@ -1,8 +1,12 @@
+from abc import ABC
+
 # import all autoencoder versions
+from models.unsupervised import linear_vae as lv
 
-class ConvEncoder(object):
-    def __init__(self, type, latent_size):
-       
+ 
+class Encoder(ABC):
+ 
+    def __init__(self, latent_size):
         """
         Parameters:
         ----------
@@ -13,9 +17,10 @@ class ConvEncoder(object):
             raise Exception("latent_size must be greater than 0!")
 
         self.latent_size = latent_size
+        super().__init__()
 
-class ConvDecoder(object):
-    def __init__(self, type, latent_size):
+class ConvEncoder(Encoder):
+    def __init__(self, latent_size):
        
         """
         Parameters:
@@ -23,12 +28,9 @@ class ConvDecoder(object):
         latent_size : int
             latent dimension size of the autoencoder.
         """
-        if (latent_size < 0):
-            raise Exception("latent_size must be greater than 0!")
+        super().__init__(latent_size)
 
-        self.latent_size = latent_size
-
-class LinEncoder(object):
+class LinEncoder(Encoder):
     def __init__(self, latent_size, input_size, num_layers, activation):
        
         """
@@ -44,8 +46,9 @@ class LinEncoder(object):
             Type of activation function EX) 'sigmoid', 'relu'
         
         """
-        if (latent_size < 0):
-            raise Exception("latent_size must be greater than 0!")
+
+        super().__init__(latent_size)
+
         if (input_size < 0):
             raise Exception("input_size must be greater than 0!")
         if (num_layers < 0):
@@ -58,6 +61,31 @@ class LinEncoder(object):
         self.num_layers =  num_layers
         self.activation = activation
 
+class Decoder(ABC):
+     def __init__(self, latent_size):
+        """
+        Parameters:
+        ----------
+        latent_size : int
+            latent dimension size of the autoencoder.
+        """
+        if (latent_size < 0):
+            raise Exception("latent_size must be greater than 0!")
+
+        self.latent_size = latent_size
+        super().__init__()
+
+class ConvDecoder(Decoder):
+    def __init__(self, latent_size):
+       
+        """
+        Parameters:
+        ----------
+        latent_size : int
+            latent dimension size of the autoencoder.
+        """
+        super().__init__(latent_size)
+      
 class LinDecoder(nn.Module):
     def __init__(self, latent_size, output_size, num_layers, activation):
        
@@ -74,8 +102,9 @@ class LinDecoder(nn.Module):
             Type of activation function EX) 'sigmoid', 'relu'
         
         """
-        if (latent_size < 0):
-            raise Exception("latent_size must be greater than 0!")
+
+        super().__init__(latent_size)
+
         if (output_size < 0):
             raise Exception("output_size must be greater than 0!")
         if (num_layers < 0):
@@ -88,15 +117,14 @@ class LinDecoder(nn.Module):
         self.num_layers =  num_layers
         self.activation = activation
 
-
 class AutoEncoder(object):
     def __init__(self, encoder, decoder, mode, backend=None):
           """
         Parameters:
         ----------
-        encoder : LinEncoder or ConvEncoder
+        encoder : Encoder
             encoder options for the autoencoder.
-        decoder : LinDecoder or ConvDecoder
+        decoder : Decoder
             decoder options of the autoencoder.
         mode : str
             Decides backend. Either 'pytorch' or 'keras'.
@@ -119,6 +147,9 @@ class AutoEncoder(object):
                 raise Exception("keras selected, must also specify backend 'tf', 'th', or 'cntk'")
 
         self.backend = backend
+        self.encoder = encoder
+        self.decoder = decoder
+
 
         self.model = buildAutoEncoder()
         
@@ -127,16 +158,30 @@ class AutoEncoder(object):
         AE_model = None
         
         if (self.mode == 'pytorch'):
-            AE_model = buildPytorchVAE()
+            AE_model = buildPytorchModel()
         elif (self.mode == 'keras'):
-            AE_model = buildKerasVAE(self.backend)
+            AE_model = buildKerasModel(self.backend)
         
-        if (self.mode == 'pytorch'):
-            AE_model = buildPytorchCVAE()
-        elif (self.mode == 'keras'):
-            AE_model = buildKerasCVAE(self.backend)
-
         return AE_model
+
+
+
+
+    def buildPytorchModel(self):
+        e = lv.Encoder(self.encoder.input_size,
+                       self.encoder.latent_size)
+        d = lv.Decoder(self.decoder.latent_size,
+                       self.decoder.output_size)
+
+
+
+
+
+
+
+
+    def buildKerasModel(self):
+        pass
 
 
     def train(x_train, y_train=None):
