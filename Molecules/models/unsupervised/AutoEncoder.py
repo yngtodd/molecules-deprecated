@@ -1,8 +1,8 @@
 from abc import ABC
 
 # import all autoencoder versions
-from Molecules.models.unsupervised import linear_vae as lv_py
-from Molecules.models.unsupervised import vae_conv-train_load as cv_k
+from models.unsupervised import linear_vae as lv_py
+from models.unsupervised import vae_conv-train_load as cv_k
 
  
 class Encoder(ABC):
@@ -123,7 +123,7 @@ class LinDecoder(Decoder):
         self.type = 'lin'
 
 class AutoEncoder(object):
-    def __init__(self, encoder, decoder, mode, shape=None, backend=None):
+    def __init__(self, encoder, decoder, mode, shape, backend=None):
           """
         Parameters:
         ----------
@@ -134,7 +134,7 @@ class AutoEncoder(object):
         mode : str
             Decides backend. Either 'pytorch' or 'keras'.
         shape : tuple
-            Required iff backend is 'keras'. Shape of X_train EX) shape=X_train.shape
+            Shape of X_train EX) shape=X_train.shape
         backend : str
             Required iff backend is 'keras'. Selects keras backend as 'tf' or 'th' or 'cntk'.
         """
@@ -155,8 +155,6 @@ class AutoEncoder(object):
         if (self.mode == 'keras'):
             if (backend != 'tf' and backend != 'th' and backend != 'cntk'):
                 raise Exception("keras selected, must also specify backend 'tf', 'th', or 'cntk'")
-            if (shape == None):
-                raise Exception("keras selected, must also specify shape of training data")
 
         # TODO: Add checks to see that conv_e == conv_d and lin respecitevly.
 
@@ -223,7 +221,7 @@ class AutoEncoder(object):
 
 
 
-    def fit(x_train, y_train=None):
+    def train(x_train, y_train=None):
         if y_train == True:
             pass
         if (self.type == 'lin'):
