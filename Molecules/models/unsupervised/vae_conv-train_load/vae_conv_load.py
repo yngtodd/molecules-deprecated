@@ -34,6 +34,7 @@ pad_col = 0;
 channels = 1;
 batch_size = 1000;
 conv_layers = 3;
+# feature_maps is number of filters 
 feature_maps = [128,128,128,128];
 filter_shapes = [(3,3),(3,3),(3,3),(3,3)];
 strides = [(1,1),(2,2),(1,1),(1,1)];
