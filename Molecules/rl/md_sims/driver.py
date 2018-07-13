@@ -9,7 +9,7 @@ class RL(object):
     def __init__(self, sim_num=1000, iterations=10, initial_pdb=None):
 	if initial_pdb == None:
 	    # For testing purposes
-	    self.initial_pdb = '/home/a05/data/fs-peptide/raw_MD_data/fs-peptide.pdb'
+	    self.initial_pdb = '/home/a05/data/C1B48/C1B48ww-noLigand.pdb'
 	else:
 	    self.initial_pdb = initial_pdb
 	

@@ -46,6 +46,7 @@ class ExtractNativeContact(object):
 	self.path_1 = "./results/native-contact/";
 	self.path_2 = "./results/native-contact/raw/";
 	self.path_3 = "./results/native-contact/data/";
+
     def build_directories(self):  
 	# creating directories for results;
 	if not os.path.exists(self.path_0):
@@ -60,88 +61,88 @@ class ExtractNativeContact(object):
  
  
  
-# calculate native contacts & contact map;
-
-# number of frames per trajectories;
-#f = int(0.01*10000);
-# for file naming purpose;
-k = 0;
-# end define parameters
-# calculate contact map over frames;
-for i in range(1, (n+1)):    
-    # specify path of structure & trajectory files;    
-    print "Creating Universe"
-    u0 =mdanal.Universe(data_path + '100-fs-peptide-400K.pdb', data_path + 'trajectory-%i.xtc' % i);
-    f = len(u0.trajectory);
-    print('trajectory no:'), i;
-    print('number of frames'), f;
-    # crude definition of salt bridges as contacts between CA atoms;
-    #CA = "(name CA and resid 237-248 283-288 311-319 345-349 394-399)";
-    #CA = "(name CA and resid 42:76)";
-    CA = "(name CA and resid 1:24)";
-    #CA = "(name CA and resid 42:76)";
-    CA0 = u0.select_atoms(CA);
-    print "Defining carbon alphas"
-    #CA0 = u0.select_atoms(CA);
-    # print progress;
-#    print('read user defined atoms for frames:'), k;
-    # calculate contact map over all frames; 
-    for j in range(0, (f)):
-        # calculating and saving native contact dat files per frame;     
-        # set up analysis of native contacts ("salt bridges"); salt bridges have a distance <8 Angstrom;
-        ca = contacts.ContactAnalysis1(u0, selection=(CA, CA), refgroup=(CA0, CA0), radius=8.0, 
-                                       outfile= path_2 + 'cont-mat_%i.dat' % k)    
-        ca.run(store=True, start=j, stop=j+1, step=1);
-        # save ncontact figures per frame or function of residues;
-        #ca.plot_qavg(filename="./fig_res/ncontact_res_%i.pdf" % k);
-        # save ncontact over time;
-        #ca.plot(filename="./fig_frame/ncontact_time_%i.pdf" % k);
-        # read zipped native contact array files;
-        inF_array = gzip.GzipFile(path_2 + "cont-mat_%i.array.gz" % k, 'rb');   
-        s_array = inF_array.read();
-	inF_array.close();
-	arr = s_array
-        arr = np.fromstring(s_array, dtype='float32', sep=' ')
-        arr = np.reshape(arr, (int(sqrt(arr.shape[0])), int(sqrt(arr.shape[0]))))
-	for i in range(0, arr.shape[0]):
-    	    arr[i][i] = 0.
-	    if i == arr.shape[0] - 1:
-		break
-	    else:
-		arr[i][i+1] = 0.
-		arr[i+1][i] = 0.
-	temp = ''
-	for ind in range(0, arr.shape[0]):
-	    for inj in range(0, arr.shape[0]):
-	        temp += str( arr[ind][inj])    
-	   	temp += ' '
-	    temp += '\n'
-	s_array = temp
-        # copy to another file;
-        outF_array = file(path_2 + "cont-mat_%i.array" % k, 'wb');
-        outF_array.write(s_array);
-        outF_array.close(); 
-        # remove zipped array file;
-        os.remove(path_2 + "cont-mat_%i.array.gz" %k);
-        # to next file name numerics;
-        k += 1;
-    print('read user defined atoms for frames:'), k;
+    # calculate native contacts & contact map;
+    def calculate_contact_maps(self):
+	# for file naming purpose;
+	k = 0;
+	# end define parameters
+	# calculate contact map over frames;
+	for i in range(1, (self.n+1)):    
+	    # specify path of structure & trajectory files;    
+	    print("Creating Universe")
+	    # TODO: Automatically get correct pdb file
+	    # TODO: Automatically get trajectory files name
+	    u0 =mdanal.Universe(self.data_path + '100-fs-peptide-400K.pdb', self.data_path + 'trajectory-%i.xtc' % i);
+	    f = len(u0.trajectory);
+	    print('Trajectory no:', i);
+	    print('Number of frames', f);
+	    # crude definition of salt bridges as contacts between CA atoms;
+	    #CA = "(name CA and resid 237-248 283-288 311-319 345-349 394-399)";
+	    #CA = "(name CA and resid 42:76)";
+	    CA = "(name CA and resid 1:24)";
+	    #CA = "(name CA and resid 42:76)";
+	    CA0 = u0.select_atoms(CA);
+	    print("Defining carbon alphas")
+	    #CA0 = u0.select_atoms(CA);
+	    # print progress;
+	    # print('read user defined atoms for frames:'), k;
+	    # calculate contact map over all frames; 
+	    for j in range(0, (f)):
+	        # calculating and saving native contact dat files per frame;     
+	        # set up analysis of native contacts ("salt bridges"); salt bridges have a distance <8 Angstrom;
+	        ca = contacts.ContactAnalysis1(u0, selection=(CA, CA), refgroup=(CA0, CA0), radius=8.0, 
+	                                       outfile= self.path_2 + 'cont-mat_%i.dat' % k)    
+        	ca.run(store=True, start=j, stop=j+1, step=1);
+        	# save ncontact figures per frame or function of residues;
+        	#ca.plot_qavg(filename="./fig_res/ncontact_res_%i.pdf" % k);
+        	# save ncontact over time;
+        	#ca.plot(filename="./fig_frame/ncontact_time_%i.pdf" % k);
+        	# read zipped native contact array files;
+        	inF_array = gzip.GzipFile(self.path_2 + "cont-mat_%i.array.gz" % k, 'rb');   
+        	s_array = inF_array.read();
+		inF_array.close();
+		arr = s_array
+        	arr = np.fromstring(s_array, dtype='float32', sep=' ')
+        	arr = np.reshape(arr, (int(sqrt(arr.shape[0])), int(sqrt(arr.shape[0]))))
+		for i in range(0, arr.shape[0]):
+    		    arr[i][i] = 0.
+		    if i == arr.shape[0] - 1:
+			break
+		    else:
+			arr[i][i+1] = 0.
+			arr[i+1][i] = 0.
+		temp = ''
+		for ind in range(0, arr.shape[0]):
+		    for inj in range(0, arr.shape[0]):
+		        temp += str( arr[ind][inj])    
+		   	temp += ' '
+		    temp += '\n'
+		s_array = temp
+	        # copy to another file;
+	        outF_array = file(self.path_2 + "cont-mat_%i.array" % k, 'wb');
+	        outF_array.write(s_array);
+	        outF_array.close(); 
+	        # remove zipped array file;
+	        os.remove(path_2 + "cont-mat_%i.array.gz" %k);
+	        # to next file name numerics;
+	        k += 1;
+	    print('Read user defined atoms for frames:', k);
  
- 
-# create one contact map from all contact map files;
-# for counting purpose;
-l = 0;
-for i in range(0, k):
-    if i==10000*l:
-        print "compressing frame:", i;
-        l+= 1;
-    fin = open(path_2 + "cont-mat_%i.array" % i, "r")
-    data1 = fin.read()
-    fin.close()
-    fout = open(path_3 + "cont-mat.array", "a")
-    fout.write(data1)
-    fout.close() 
-print "contact map file created";
+    def generate_data_file(self): 
+	# create one contact map from all contact map files;
+	# for counting purpose;
+	l = 0;
+	for i in range(0, k):
+	    if i==10000*l:
+	        print("Compressing frame:", i)
+	        l+= 1;
+	    fin = open(path_2 + "cont-mat_%i.array" % i, "r")
+	    data1 = fin.read()
+	    fin.close()
+	    fout = open(path_3 + "cont-mat.array", "a")
+	    fout.write(data1)
+	    fout.close() 
+	print("Contact map file created")
 # create one native contact from all native contact files;
 # for counting purpose;
 l = 0;
