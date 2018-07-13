@@ -1,3 +1,4 @@
+from __future__ import print_function
 import gzip;
 import os, sys;
 import numpy as np;
@@ -18,32 +19,48 @@ def count_traj_files(path, extension):
     """
     return len(glob.glob1(path,"*."+extension)) 
 
- 
-# specify path for trajectory+pdb files;
-path_data = "/home/a05/Package_6_22/raw_MD_data/original/";
-# create directories for results;
-path_0 = "./results/";
-path_1 = "./results/native-contact/";
-path_2 = "./results/native-contact/raw/";
-path_3 = "./results/native-contact/data/";
-  
-# creating directories for results;
-if not os.path.exists(path_0):
-   os.mkdir(path_0, 0755);
-if not os.path.exists(path_1):
-   os.mkdir(path_1, 0755);
-if not os.path.exists(path_2):
-   os.mkdir(path_2, 0755);
-if not os.path.exists(path_3):
-   os.mkdir(path_3, 0755);
-print "directories created or if already exists - then checked";
+class ExtractNativeContact(object):
+    def __init__(self, data_path, traj_extension, n=None):
+	"""
+	data_path : str
+	    path containing the pdb and trajectory (xtc, dcd) files.
+	traj_extension : str
+	    file extension of the trajectory files in data_path
+	n : int
+	    number of trajectory files to be processed. If not selected
+	    then all available in data_path will be selected.
+	"""
+	if traj_extension != 'xtc' or traj_extension != 'dcd':
+	    raise Exception("traj_extension must be 'xtc' or 'dcd'.")
+	
+	#data_path = "/home/a05/Package_6_22/raw_MD_data/original/";
+	self.data_path = data_path
+	self.traj_extension = traj_extension
+	if n == None:
+	    n = count_traj_files(data_path, self.traj_extension)
+	else:
+	    self.n = n
+
+	# create directories for results;
+	self.path_0 = "./results/";
+	self.path_1 = "./results/native-contact/";
+	self.path_2 = "./results/native-contact/raw/";
+	self.path_3 = "./results/native-contact/data/";
+    def build_directories(self):  
+	# creating directories for results;
+	if not os.path.exists(self.path_0):
+	    os.mkdir(self.path_0, 0755);
+	if not os.path.exists(self.path_1):
+	    os.mkdir(self.path_1, 0755);
+	if not os.path.exists(self.path_2):
+	    os.mkdir(self.path_2, 0755);
+	if not os.path.exists(self.path_3):
+	    os.mkdir(self.path_3, 0755);
+	print("Directories created or if already exists - then checked")
  
  
  
 # calculate native contacts & contact map;
-# define parameters;
-# number of trajectories;
-n = count_traj_files(path_data, 'xtc');
 
 # number of frames per trajectories;
 #f = int(0.01*10000);
@@ -54,7 +71,7 @@ k = 0;
 for i in range(1, (n+1)):    
     # specify path of structure & trajectory files;    
     print "Creating Universe"
-    u0 =mdanal.Universe(path_data + '100-fs-peptide-400K.pdb', path_data + 'trajectory-%i.xtc' % i);
+    u0 =mdanal.Universe(data_path + '100-fs-peptide-400K.pdb', data_path + 'trajectory-%i.xtc' % i);
     f = len(u0.trajectory);
     print('trajectory no:'), i;
     print('number of frames'), f;
