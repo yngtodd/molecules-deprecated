@@ -1,14 +1,10 @@
-# coding: utf-8
- 
-# In[36]:
- 
-#get_ipython().magic(u'matplotlib inline')
 import gzip;
 import os, sys;
 import numpy as np;
-import matplotlib.pyplot as plt;
-plt.style.use('ggplot');
 from math import sqrt 
+import MDAnalysis as mdanal;
+from MDAnalysis.analysis import contacts;
+
 import glob
 def count_traj_files(path, extension):
     if not os.path.exists(path):
@@ -21,7 +17,7 @@ def count_traj_files(path, extension):
         EX) 'dcd', 'xtc', ...
     """
     return len(glob.glob1(path,"*."+extension)) 
-# In[37]:
+
  
 # specify path for trajectory+pdb files;
 path_data = "/home/a05/Package_6_22/raw_MD_data/original/";
@@ -30,10 +26,7 @@ path_0 = "./results/";
 path_1 = "./results/native-contact/";
 path_2 = "./results/native-contact/raw/";
 path_3 = "./results/native-contact/data/";
- 
- 
-# In[38]:
- 
+  
 # creating directories for results;
 if not os.path.exists(path_0):
    os.mkdir(path_0, 0755);
@@ -46,11 +39,8 @@ if not os.path.exists(path_3):
 print "directories created or if already exists - then checked";
  
  
-# In[39]:
  
 # calculate native contacts & contact map;
-import MDAnalysis as mdanal;
-from MDAnalysis.analysis import contacts;
 # define parameters;
 # number of trajectories;
 n = count_traj_files(path_data, 'xtc');
@@ -92,13 +82,9 @@ for i in range(1, (n+1)):
         # read zipped native contact array files;
         inF_array = gzip.GzipFile(path_2 + "cont-mat_%i.array.gz" % k, 'rb');   
         s_array = inF_array.read();
- #       print s_array
 	inF_array.close();
-	#print(s_array)
 	arr = s_array
-	# Test
         arr = np.fromstring(s_array, dtype='float32', sep=' ')
-#	print(arr)
         arr = np.reshape(arr, (int(sqrt(arr.shape[0])), int(sqrt(arr.shape[0]))))
 	for i in range(0, arr.shape[0]):
     	    arr[i][i] = 0.
@@ -114,15 +100,6 @@ for i in range(1, (n+1)):
 	   	temp += ' '
 	    temp += '\n'
 	s_array = temp
-	#arr = np.reshape(arr,(arr.shape[0]**2)) 
-	#s_array = np.array_str(arr)
-	#s_array = s_array[1:-1]
-	#s_array += ' '
-	#s_array = s_array[1:int(sqrt(arr.shape[0]))]
-	#s_array += '\n'
-#	print('\n\n\n')
-#	print(s_array)
-	# END Test	
         # copy to another file;
         outF_array = file(path_2 + "cont-mat_%i.array" % k, 'wb');
         outF_array.write(s_array);
@@ -133,7 +110,6 @@ for i in range(1, (n+1)):
         k += 1;
     print('read user defined atoms for frames:'), k;
  
-# In[40]:
  
 # create one contact map from all contact map files;
 # for counting purpose;
@@ -164,9 +140,7 @@ for i in range(0, k):
     fout.close() 
 print "native contact file created";
  
- 
-# In[43]:
- 
+#import matplotlib.pyplot as plt
 # plot histogram of native contacts;    
 #dat_check = np.loadtxt(path_3 + 'cont-mat.dat');
 #[nhist, shist] = np.histogram(dat_check[ : ,1], 25);
@@ -176,27 +150,7 @@ print "native contact file created";
 #plt.clf();
  
  
-# In[44]:
- 
 # check contact map shape;
 map_check = np.loadtxt(path_3 + 'cont-mat.array');
 print type(map_check)
 print "contact map shape:", np.shape(map_check)
- 
- 
-# In[ ]:
- 
- 
- 
- 
-# In[ ]:
- 
- 
- 
- 
-# In[ ]:
- 
- 
- 
- 
-# In[ ]:
