@@ -6,6 +6,7 @@ from math import sqrt
 import MDAnalysis as mdanal;
 from MDAnalysis.analysis import contacts;
 
+# TODO: Add count_traj_files to utils
 import glob
 def count_traj_files(path, extension):
     if not os.path.exists(path):
@@ -43,9 +44,9 @@ class ExtractNativeContact(object):
 
 	# create directories for results;
 	self.path_0 = "./results/";
-	self.path_1 = "./results/native-contact/";
-	self.path_2 = "./results/native-contact/raw/";
-	self.path_3 = "./results/native-contact/data/";
+	self.path_1 = self.path_0 + "native-contact/";
+	self.path_2 = self.path_1 + "raw/";
+	self.path_3 = self.path_1 + "data/";
 
     def build_directories(self):  
 	# creating directories for results;
@@ -59,10 +60,8 @@ class ExtractNativeContact(object):
 	    os.mkdir(self.path_3, 0755);
 	print("Directories created or if already exists - then checked")
  
- 
- 
     # calculate native contacts & contact map;
-    def calculate_contact_maps(self):
+    def calculate_contact_matrices(self):
 	# for file naming purpose;
 	k = 0;
 	# end define parameters
@@ -72,10 +71,11 @@ class ExtractNativeContact(object):
 	    print("Creating Universe")
 	    # TODO: Automatically get correct pdb file
 	    # TODO: Automatically get trajectory files name
+	    # TODO: Automatically get CA residues
 	    u0 =mdanal.Universe(self.data_path + '100-fs-peptide-400K.pdb', self.data_path + 'trajectory-%i.xtc' % i);
-	    f = len(u0.trajectory);
+	    self.f = len(u0.trajectory);
 	    print('Trajectory no:', i);
-	    print('Number of frames', f);
+	    print('Number of frames', self.f);
 	    # crude definition of salt bridges as contacts between CA atoms;
 	    #CA = "(name CA and resid 237-248 283-288 311-319 345-349 394-399)";
 	    #CA = "(name CA and resid 42:76)";
@@ -87,7 +87,7 @@ class ExtractNativeContact(object):
 	    # print progress;
 	    # print('read user defined atoms for frames:'), k;
 	    # calculate contact map over all frames; 
-	    for j in range(0, (f)):
+	    for j in range(0, (self.f)):
 	        # calculating and saving native contact dat files per frame;     
 	        # set up analysis of native contacts ("salt bridges"); salt bridges have a distance <8 Angstrom;
 	        ca = contacts.ContactAnalysis1(u0, selection=(CA, CA), refgroup=(CA0, CA0), radius=8.0, 
@@ -128,14 +128,14 @@ class ExtractNativeContact(object):
 	        k += 1;
 	    print('Read user defined atoms for frames:', k);
  
-    def generate_data_file(self): 
+    def generate_array_file(self): 
 	# create one contact map from all contact map files;
 	# for counting purpose;
 	l = 0;
-	for i in range(0, k):
+	for i in range(0, self.f * self.n):
 	    if i==10000*l:
 	        print("Compressing frame:", i)
-	        l+= 1;
+	        l += 1;
 	    fin = open(path_2 + "cont-mat_%i.array" % i, "r")
 	    data1 = fin.read()
 	    fin.close()
@@ -143,32 +143,41 @@ class ExtractNativeContact(object):
 	    fout.write(data1)
 	    fout.close() 
 	print("Contact map file created")
-# create one native contact from all native contact files;
-# for counting purpose;
-l = 0;
-for i in range(0, k):
-    if i==10000*l:
-        print "compressing frame:", i;
-        l+= 1;
-    fin = open(path_2 + "cont-mat_%i.dat" % i, "r")
-    data1 = fin.read()
-    fin.close()
-    fout = open(path_3 + "cont-mat.dat", "a")
-    fout.write(data1)
-    fout.close() 
-print "native contact file created";
+
+    def generate_dat_file(self):
+	# create one native contact from all native contact files;
+	# for counting purpose;
+	l = 0;
+	for i in range(0, k):
+	    if i==10000*l:
+       	        print "compressing frame:", i;
+        	l+= 1;
+    	    fin = open(path_2 + "cont-mat_%i.dat" % i, "r")
+    	    data1 = fin.read()
+    	    fin.close()
+    	    fout = open(path_3 + "cont-mat.dat", "a")
+    	    fout.write(data1)
+    	    fout.close() 
+	print("Native contact file created");
  
-#import matplotlib.pyplot as plt
-# plot histogram of native contacts;    
-#dat_check = np.loadtxt(path_3 + 'cont-mat.dat');
-#[nhist, shist] = np.histogram(dat_check[ : ,1], 25);
-#plt.semilogy(shist[1: ], nhist, 'r-');
-#plt.savefig(path_1+'native-contact.png', dpi=600);
-#plt.show();
-#plt.clf();
- 
- 
-# check contact map shape;
-map_check = np.loadtxt(path_3 + 'cont-mat.array');
-print type(map_check)
-print "contact map shape:", np.shape(map_check)
+    def generate_contact_matrix(self):
+	self.calculate_contact_matrices()
+        self.generate_array_file()
+        self.generate_dat_file()
+
+    def plot_native_contacts(self):
+	#import matplotlib.pyplot as plt
+	# plot histogram of native contacts;    
+	#dat_check = np.loadtxt(path_3 + 'cont-mat.dat');
+	#[nhist, shist] = np.histogram(dat_check[ : ,1], 25);
+	#plt.semilogy(shist[1: ], nhist, 'r-');
+	#plt.savefig(path_1+'native-contact.png', dpi=600);
+	#plt.show();
+	#plt.clf();
+	print("Not implemented. Uncomment code to use.")
+	 
+     def map_check(self):
+	# Check contact map shape
+	map_check = np.loadtxt(path_3 + 'cont-mat.array')
+	print type(map_check)
+	print("Contact map shape:", np.shape(map_check))

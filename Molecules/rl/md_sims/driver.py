@@ -50,7 +50,6 @@ class RL(object):
 	#print "Define steps"
 
     def execute(self):
-	# Counting purpose
 	for i in range(1, self.iterations + 1):
 	    path = "./results/iteration_rl_"
 	    if not os.path.exists(path + "%i" % i):
@@ -59,7 +58,13 @@ class RL(object):
 		path_1 = path + "%i/sim_%i_%i/" % (i,i,j)
 		if not os.path.exists(path_1):
                     os.mkdir(path_1, 0755)
+		# TODO: Optimize so that the simulation jobs are split over
+		#       the available GPU nodes. May be possible with python
+		#	subprocess. It would be a good idea to pull 
+		#	self.run_simulation(path_1) out of the inner for loop.
 		self.run_simulation(path_1)
+		
+	    
 	    # Generate contact matrix
 	    # Pass CM's to CVAE
 	    # Evaluate reward function
