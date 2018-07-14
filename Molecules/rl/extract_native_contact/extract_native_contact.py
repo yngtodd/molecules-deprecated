@@ -150,7 +150,7 @@ class ExtractNativeContact(object):
 	l = 0;
 	for i in range(0, k):
 	    if i==10000*l:
-       	        print "compressing frame:", i;
+       	        print("Compressing frame:", i)
         	l+= 1;
     	    fin = open(path_2 + "cont-mat_%i.dat" % i, "r")
     	    data1 = fin.read()
@@ -176,8 +176,8 @@ class ExtractNativeContact(object):
 	#plt.clf();
 	print("Not implemented. Uncomment code to use.")
 	 
-     def map_check(self):
-	# Check contact map shape
+    def map_check(self):
+        # Check contact map shape
 	map_check = np.loadtxt(path_3 + 'cont-mat.array')
-	print type(map_check)
+	print(type(map_check))
 	print("Contact map shape:", np.shape(map_check))
