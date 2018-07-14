@@ -38,8 +38,12 @@ class ExtractNativeContact(object):
 	"""
 	data_path : str
 	    path containing the pdb and trajectory (xtc, dcd) files.
-	traj_extension : str
-	    file extension of the trajectory files in data_path
+	structure_file : str
+	    name of structure (pdb) file in data_path.
+	    EX) protein.pdb
+	traj_file : str
+	    name of trajectory (xtc, dcd) file in data_path
+	    EX) protein-1.dcd
 	n : int
 	    number of trajectory files to be processed. If not selected
 	    then all available in data_path will be selected.
