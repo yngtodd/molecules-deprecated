@@ -44,7 +44,7 @@ class ExtractNativeContact(object):
 	    number of trajectory files to be processed. If not selected
 	    then all available in data_path will be selected.
 	"""
-	if traj_file[-3:] != 'xtc' or traj_file[-3:] != 'dcd':
+	if traj_file[-3:] != 'xtc' and traj_file[-3:] != 'dcd':
 	    raise Exception("traj_path must have extension 'xtc' or 'dcd'.")
 	if structure_file[-3:] != 'pdb':
 	    raise Exception("structure_path must have extension 'pdb'.")
@@ -87,7 +87,7 @@ class ExtractNativeContact(object):
 	    # TODO: Automatically get correct pdb file
 	    # TODO: Automatically get trajectory files name
 	    # TODO: Automatically get CA residues
-	    u0 =mdanal.Universe(self.data_path + self.structure_file, self.data_path + str(grab_file_name(self.traj_file)) + '-%i.' + str(self.traj_file[-3:]) % i);
+	    u0 =mdanal.Universe(self.data_path + self.structure_file, self.data_path + grab_file_name(self.traj_file) + '-%i' % i + self.traj_file[-4:])
 	    self.f = len(u0.trajectory);
 	    print('Trajectory no:', i);
 	    print('Number of frames', self.f);
@@ -138,7 +138,7 @@ class ExtractNativeContact(object):
 	        outF_array.write(s_array);
 	        outF_array.close(); 
 	        # remove zipped array file;
-	        os.remove(path_2 + "cont-mat_%i.array.gz" %k);
+	        os.remove(self.path_2 + "cont-mat_%i.array.gz" %k);
 	        # to next file name numerics;
 	        k += 1;
 	    print('Read user defined atoms for frames:', k);
@@ -151,10 +151,10 @@ class ExtractNativeContact(object):
 	    if i==10000*l:
 	        print("Compressing frame:", i)
 	        l += 1;
-	    fin = open(path_2 + "cont-mat_%i.array" % i, "r")
+	    fin = open(self.path_2 + "cont-mat_%i.array" % i, "r")
 	    data1 = fin.read()
 	    fin.close()
-	    fout = open(path_3 + "cont-mat.array", "a")
+	    fout = open(self.path_3 + "cont-mat.array", "a")
 	    fout.write(data1)
 	    fout.close() 
 	print("Contact map file created")
@@ -163,19 +163,20 @@ class ExtractNativeContact(object):
 	# create one native contact from all native contact files;
 	# for counting purpose;
 	l = 0;
-	for i in range(0, k):
+	for i in range(0, self.f * self.n):
 	    if i==10000*l:
        	        print("Compressing frame:", i)
         	l+= 1;
-    	    fin = open(path_2 + "cont-mat_%i.dat" % i, "r")
+    	    fin = open(self.path_2 + "cont-mat_%i.dat" % i, "r")
     	    data1 = fin.read()
     	    fin.close()
-    	    fout = open(path_3 + "cont-mat.dat", "a")
+    	    fout = open(self.path_3 + "cont-mat.dat", "a")
     	    fout.write(data1)
     	    fout.close() 
 	print("Native contact file created");
  
     def generate_contact_matrix(self):
+	self.build_directories()
 	self.calculate_contact_matrices()
         self.generate_array_file()
         self.generate_dat_file()
@@ -193,6 +194,6 @@ class ExtractNativeContact(object):
 	 
     def map_check(self):
         # Check contact map shape
-	map_check = np.loadtxt(path_3 + 'cont-mat.array')
+	map_check = np.loadtxt(self.path_3 + 'cont-mat.array')
 	print(type(map_check))
 	print("Contact map shape:", np.shape(map_check))
