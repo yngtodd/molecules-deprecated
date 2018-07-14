@@ -15,5 +15,5 @@ def count_traj_files(path, extension):
 
 # USAGE:
 
-n = count_traj_files("./", 'xtc')
-print(n)
+#n = count_traj_files("./", 'xtc')
+#print(n)

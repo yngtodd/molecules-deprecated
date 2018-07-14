@@ -20,8 +20,21 @@ def count_traj_files(path, extension):
     """
     return len(glob.glob1(path,"*."+extension)) 
 
+def grab_file_name(f):
+    """
+    f : str
+	name of file
+    """
+    index = 0
+    for i in f:
+	if i == '-':
+	    break
+        index += 1
+    return f[:index]
+        
+
 class ExtractNativeContact(object):
-    def __init__(self, data_path, traj_extension, n=None):
+    def __init__(self, data_path, structure_file, traj_file, n=None):
 	"""
 	data_path : str
 	    path containing the pdb and trajectory (xtc, dcd) files.
@@ -31,27 +44,29 @@ class ExtractNativeContact(object):
 	    number of trajectory files to be processed. If not selected
 	    then all available in data_path will be selected.
 	"""
-	if traj_extension != 'xtc' or traj_extension != 'dcd':
-	    raise Exception("traj_extension must be 'xtc' or 'dcd'.")
-	
+	if traj_file[-3:] != 'xtc' or traj_file[-3:] != 'dcd':
+	    raise Exception("traj_path must have extension 'xtc' or 'dcd'.")
+	if structure_file[-3:] != 'pdb':
+	    raise Exception("structure_path must have extension 'pdb'.")
+		
+	self.structure_file = structure_file
+	self.traj_file = traj_file
 	#data_path = "/home/a05/Package_6_22/raw_MD_data/original/";
 	self.data_path = data_path
-	self.traj_extension = traj_extension
 	if n == None:
-	    n = count_traj_files(data_path, self.traj_extension)
-	else:
-	    self.n = n
+	    n = count_traj_files(self.data_path, self.traj_file[-3:])
+	self.n = n
 
 	# create directories for results;
-	self.path_0 = "./results/";
-	self.path_1 = self.path_0 + "native-contact/";
+	#self.path_0 = self.data_path + "results/";
+	self.path_1 = self.data_path + "native-contact/";
 	self.path_2 = self.path_1 + "raw/";
 	self.path_3 = self.path_1 + "data/";
 
     def build_directories(self):  
 	# creating directories for results;
-	if not os.path.exists(self.path_0):
-	    os.mkdir(self.path_0, 0755);
+	#if not os.path.exists(self.path_0):
+	#    os.mkdir(self.path_0, 0755);
 	if not os.path.exists(self.path_1):
 	    os.mkdir(self.path_1, 0755);
 	if not os.path.exists(self.path_2):
@@ -72,7 +87,7 @@ class ExtractNativeContact(object):
 	    # TODO: Automatically get correct pdb file
 	    # TODO: Automatically get trajectory files name
 	    # TODO: Automatically get CA residues
-	    u0 =mdanal.Universe(self.data_path + '100-fs-peptide-400K.pdb', self.data_path + 'trajectory-%i.xtc' % i);
+	    u0 =mdanal.Universe(self.data_path + self.structure_file, self.data_path + str(grab_file_name(self.traj_file)) + '-%i.' + str(self.traj_file[-3:]) % i);
 	    self.f = len(u0.trajectory);
 	    print('Trajectory no:', i);
 	    print('Number of frames', self.f);
