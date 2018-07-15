@@ -56,6 +56,8 @@ class RL(object):
     def execute(self):
 	pdb_file = 'output.pdb'
 	dcd_file = 'output-1.dcd'
+	# Put DCD reporter in a loop and put only a fixed number (10000) frames
+	# in each output-i.dcd file. Where i ranges from (1,n).
 	for i in range(1, self.iterations + 1):
 	    path = "./results/iteration_rl_"
 	    if not os.path.exists(path + "%i" % i):
@@ -69,11 +71,19 @@ class RL(object):
 		#	subprocess. It would be a good idea to pull 
 		#	self.run_simulation(path_1) out of the inner for loop.
 		self.run_simulation(path_1, pdb_file, dcd_file)
-
+	    
+	    # Calculate contact matrix .array and .dat files for each simulation
+	    # run. Files are place in native-contact/data inside each simulation
+	    # directory.
 	    for j in range(1, self.sim_num + 1):
 		path_1 = path + "%i/sim_%i_%i/" % (i,i,j)
 		cm = ExtractNativeContact(path_1, pdb_file, dcd_file)
 		cm.generate_contact_matrix()
+	    
+	    # Process contact matrix with CVAE algorithm for each simulation.
+	    for i in range(1, self.sim_num + 1):
+		path_1 = path + "%i/sim_%i_%i" % (i,i,j)
+		
 	    # Generate contact matrix
 	    # Pass CM's to CVAE
 	    # Evaluate reward function
