@@ -5,7 +5,7 @@ import os;
 #theano.config.floatX = 'float32';
 
 import numpy as np;
-import sys, os;
+import sys
 import gzip;
 from six.moves import cPickle; 
 from vae_conv import conv_variational_autoencoder;
@@ -43,6 +43,9 @@ latent_dim = 3;
 epochs = 1;
 nb_start = 0; 
 nb_end = 50;
+
+#Unique
+########################################
 # loading section; 
 nb_select = 10;
 load_step = 10;
@@ -54,17 +57,26 @@ n_dec = 10;
 pick = 400;   
 # figure with 10x10 digits for generator images;
 n_d = 10;    
-n1 = 0;        
+n1 = 0;
+
+########################################
+
 # end define parameters; 
 
 # opening file;
+
+# Unique
+##########################################
 # load data for labelling;
 label = np.loadtxt("./../native-contact/data/cont-mat.dat");
+##########################################
+
 # open pickled file;
 #with gzip.open('./aligned_fs-peptide_coor.pkl.gz', 'rb') as f3:
 #    (X) = cPickle.load(f3) 
 #x_raw = X;   
 #print "dataset dimension:", np.shape(x_raw);
+
 # open dat file;
 path_data_array = "./../native-contact/data/cont-mat.array";
 # read dat type large file line by line to save in array
@@ -164,6 +176,9 @@ filter_shapes = filter_shapes[0:conv_layers];
 strides = strides[0:conv_layers];
 autoencoder = conv_variational_autoencoder(image_size,channels,conv_layers,feature_maps,
            filter_shapes,strides,dense_layers,dense_neurons,dense_dropouts,latent_dim); 
+
+#UNIQUE
+#####################################################################
 
 # load data to analyze;
 conv_full_train = X_train[0:];
@@ -355,8 +370,8 @@ for load in range(load_start, load_end, load_step):
     plt.savefig('./fig/generated_%i.png' %load, dpi=600);
     plt.clf();  
 
-
-
+    ###############################################################################
+    # END UNIQUE
 
 
 

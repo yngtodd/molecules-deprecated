@@ -5,12 +5,13 @@ import os;
 #theano.config.floatX = 'float32';
 
 import numpy as np;
-import sys, os;
+import sys
 import gzip;
 from six.moves import cPickle; 
 from vae_conv import conv_variational_autoencoder;
 from keras import backend as K;
-import pdb
+#import pdb
+#pdb.set_trace()   
 # define parameters;
 # no of trajectory files and frames in each file;
 n_traj = 2; 
@@ -148,8 +149,10 @@ feature_maps = feature_maps[0:conv_layers];
 filter_shapes = filter_shapes[0:conv_layers];
 strides = strides[0:conv_layers];
 autoencoder = conv_variational_autoencoder(image_size,channels,conv_layers,feature_maps,
-           filter_shapes,strides,dense_layers,dense_neurons,dense_dropouts,latent_dim);  
-pdb.set_trace()    
+           filter_shapes,strides,dense_layers,dense_neurons,dense_dropouts,latent_dim);
+
+# UNIQUE
+###############################################################
 # train, save & load;
 for i in range (nb_start, nb_end):    
     if i == 0:       
@@ -158,9 +161,6 @@ for i in range (nb_start, nb_end):
     else:        
        autoencoder.load("./model/model_%i" %i)
     # train model;
-    print X_train.shape
-    print X_test.shape
-    #pdb.set_trace()   
     autoencoder.train(X_train[0:],batch_size,epochs=epochs,
               validation_data=(X_test[0:], X_test[0:]), checkpoint=False,filepath="./savedweights.dat");  
     # save model;  
@@ -189,5 +189,5 @@ plt.legend(loc='upper right');
 plt.savefig('./fig/history.png', dpi=600);
 plt.clf();
     
-
+###############################################################
 

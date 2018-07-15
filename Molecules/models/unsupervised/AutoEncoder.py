@@ -200,7 +200,7 @@ class AutoEncoder(object):
     def buildKerasConvModel(self):
         # CODE: From vae_conv_train.py
         # define parameters for variational autoencoder - convolutional
-        image_size = self.shape[-2:];
+        image_size = self.shape[-2:]
         channels = 1
         conv_layers = 3
         feature_maps = [128,128,128,128]
