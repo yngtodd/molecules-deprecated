@@ -39,8 +39,8 @@ class CVAE(object):
         # TODO: Add path variable to allow output to any directory. Default to "./".
         # TODO: Add exception handling for each input and add doc string.
 
-         if not os.path.exists(path):
-             raise Exception("Path: " + str(path) + " does not exist!")
+        if not os.path.exists(path):
+            raise Exception("Path: " + str(path) + " does not exist!")
 
         # Define parameters (For training and loading)
         self.path = path
@@ -168,24 +168,24 @@ class CVAE(object):
         col_dim_array = self.col + self.pad_col
 
         # Reshape data according to the choice of flatteing
-        if choice == 0:
+        if self.choice == 0:
             new_shape = (len(self.x_raw), row_dim_array, col_dim_array)  
-        if choice == 1:
+        if self.choice == 1:
             new_shape = (len(self.x_raw), row_dim_array * col_dim_array)
 
         add_zero = np.zeros(new_shape, dtype = self.x_raw.dtype)       
 
-        if choice == 0:
+        if self.choice == 0:
             add_zero[0:self.x_raw.shape[0], 0:self.x_raw.shape[1], 0:self.x_raw.shape[2]] = self.x_raw 
-        if choice == 1:
+        if self.choice == 1:
             add_zero[0:self.x_raw.shape[0], 0:self.x_raw.shape[1]] = self.x_raw 
         self.x_raw = add_zero
 
         # Determine size for training, testing & prediction data
-        sep_1 = int(self.x_raw.shape[0] * sep_train)
-        sep_2 = int(self.x_raw.shape[0] * sep_test)    
-        sep_3 = int(self.x_raw.shape[0] * sep_pred)    
-        x_train_raw = self.x_raw[:self.sep_1]
+        sep_1 = int(self.x_raw.shape[0] * self.sep_train)
+        sep_2 = int(self.x_raw.shape[0] * self.sep_test)    
+        sep_3 = int(self.x_raw.shape[0] * self.sep_pred)    
+        x_train_raw = self.x_raw[:sep_1]
         x_test_raw = self.x_raw[sep_1:sep_2] 
         x_pred_raw = self.x_raw[sep_2:sep_3]
         print("Shape to load:", "Train:", np.shape(x_train_raw), "Test:", np.shape(x_test_raw), "Prediction:", np.shape(x_pred_raw))
@@ -194,10 +194,19 @@ class CVAE(object):
         print("Loading data")
         
         # Normalizing input image matrix
-        X_train = x_train_raw.astype('float32') / np.amax(x_train_raw)
-        X_test = x_test_raw.astype('float32') / np.amax(x_test_raw)
-        X_pred = x_pred_raw.astype('float32') / np.amax(x_pred_raw)
-        print("Shape of data loaded:", "Train:", np.shape(X_train), "Test:", np.shape(X_test), "Prediction:", np.shape(X_pred))
+	if len(x_train_raw) != 0:
+            X_train = x_train_raw.astype('float32') / np.amax(x_train_raw)
+        else:
+	    X_train = x_train_raw.astype('float32')
+	if len(x_test_raw) != 0:
+	    X_test = x_test_raw.astype('float32') / np.amax(x_test_raw)
+	else:
+	    X_test = x_test_raw.astype('float32')
+        if len(x_pred_raw) != 0:
+            X_pred = x_pred_raw.astype('float32') / np.amax(x_pred_raw)
+        else:
+	    X_pred = x_pred_raw.astype('float32')
+	print("Shape of data loaded:", "Train:", np.shape(X_train), "Test:", np.shape(X_test), "Prediction:", np.shape(X_pred))
 
         # TODO: Reshape prediction shape X_pred ? Ask Sindhu
         # Reshape to 4d tensors
@@ -343,9 +352,9 @@ class CVAE(object):
         data = np.array([])
         if data_set == 'train':
             data = self.X_train[0:]
-        else if data_set == 'test':
+        elif data_set == 'test':
             data = self.X_test[0:]
-        else if data_set == 'pred':
+        elif data_set == 'pred':
             data = self.X_pred[0:]
                  
         print("Loading", model_selection)
@@ -361,12 +370,12 @@ class CVAE(object):
                    np.reshape(decoded_imgs_full[:, 0:self.row, 0:self.col, :], 
                    (len(decoded_imgs_full), (self.row *self.col))), fmt='%f')
 
-         print("Encode image for train data")
-         # Encode images
-         # 5) Project inputs on the latent space
-         x_pred_encoded = self.encode(data)
-         # 6) Save encoded array to file 
-         np.savetxt(self.path + '/imgs/encoded_train_%i.out' %model_selection, x_pred_encoded, fmt='%f')
+        print("Encode image for train data")
+        # Encode images
+        # 5) Project inputs on the latent space
+        x_pred_encoded = self.encode(data)
+        # 6) Save encoded array to file 
+        np.savetxt(self.path + '/imgs/encoded_train_%i.out' %model_selection, x_pred_encoded, fmt='%f')
 
     def load_weights(self, weight_path):
         """
@@ -381,10 +390,10 @@ class CVAE(object):
         return self.autoencoder.return_embeddings(data)
 
     def decode_pred(self):
-        return self.autoencoder.decode(X_pred)
+        return self.autoencoder.decode(self.X_pred)
 
     def encode_pred(self):
-        return self.autoencoder.return_embeddings(data)
+        return self.autoencoder.return_embeddings(self.X_pred)
 
     def analyze_all(self):
         """
@@ -398,7 +407,7 @@ class CVAE(object):
         conv_full_train = self.X_train[0:]
         conv_full_test = self.X_test[0:]
         conv_full_pred = self.X_pred[0:]
-        label = label[:len(self.x_raw)]
+        label = self.label[:len(self.x_raw)]
         y_train_0 = label[:self.sep_1, 0]
         y_train_2 = label[:self.sep_1, 2]
         y_test_0 = label[self.sep_1:self.sep_2, 0]
