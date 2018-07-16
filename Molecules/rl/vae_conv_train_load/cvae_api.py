@@ -24,7 +24,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 class CVAE(object):
 
-    def __init__(self, n_traj=2, f_traj=10000, sep_train=0.8, sep_test=0.9,
+    def __init__(self, path="./", n_traj=2, f_traj=10000, sep_train=0.8, sep_test=0.9,
                  sep_pred=1, choice=0, row=21, col=21, pad_row=1, pad_col = 1,
                  channels=1, batch_size=1000, conv_layers=3, feature_maps=[128,128,128,128],
                  filter_shapes=[(3,3),(3,3),(3,3),(3,3)], strides=[(1,1),(2,2),(1,1),(1,1)],
@@ -39,7 +39,11 @@ class CVAE(object):
         # TODO: Add path variable to allow output to any directory. Default to "./".
         # TODO: Add exception handling for each input and add doc string.
 
+         if not os.path.exists(path):
+             raise Exception("Path: " + str(path) + " does not exist!")
+
         # Define parameters (For training and loading)
+        self.path = path
 
         # No of trajectory files and frames in each file
         self.n_traj = n_traj 
@@ -89,6 +93,7 @@ class CVAE(object):
 
         # End define parameters
 
+        self.build_directories()
         # Other class atributes
         
 
@@ -218,10 +223,14 @@ class CVAE(object):
         Internal method.
         """
         # Create directories
-        path_1 = "./fig"
-        path_2 = "./imgs"
-        path_3 = "./hist"
-        path_4 = "./model"
+        self.path = self.path + "/cvae"
+        path_1 = self.path + "/fig"
+        path_2 = self.path + "/imgs"
+        path_3 = self.path + "/hist"
+        path_4 = self.path + "/model"
+
+        if not os.path.exists(self.path):
+            os.mkdir(self.path, 0755)
         if not os.path.exists(path_1):
            os.mkdir(path_1, 0755)
         if not os.path.exists(path_2):
@@ -243,15 +252,15 @@ class CVAE(object):
         self.filter_shapes = self.filter_shapes[0:self.conv_layers]
         self.strides = self.strides[0:self.conv_layers]
         self.autoencoder = conv_variational_autoencoder(self.image_size,
-                                                   self.channels,
-                                                   self.conv_layers,
-                                                   self.feature_maps,
-                                                   self.filter_shapes,
-                                                   self.strides,
-                                                   self.dense_layers,
-                                                   self.dense_neurons,
-                                                   self.dense_dropouts,
-                                                   self.latent_dim)
+                                                        self.channels,
+                                                        self.conv_layers,
+                                                        self.feature_maps,
+                                                        self.filter_shapes,
+                                                        self.strides,
+                                                        self.dense_layers,
+                                                        self.dense_neurons,
+                                                        self.dense_dropouts,
+                                                        self.latent_dim)
 
     def train(self):
         """
@@ -263,52 +272,53 @@ class CVAE(object):
             if i == 0:       
                print("Skipping - no previous saved file to load")
             else:
-               self.autoencoder.load("./model/model_%i" %i)
+               self.autoencoder.load(self.path + "/model/model_%i" %i)
 
             # Train model
             self.autoencoder.train(self.X_train[0:], self.batch_size, epochs=self.epochs,
                               validation_data=(self.X_test[0:], self.X_test[0:]),
-                              checkpoint=False, filepath="./savedweights.dat")
+                              checkpoint=False, filepath=self.path + "/savedweights.dat")
             # Save model
-            self.autoencoder.save(filepath="./model/model_%i" %(i+1))
+            self.autoencoder.save(filepath=self.path + "/model/model_%i" %(i+1))
 
             # Save loss over train & validation
-            np.savetxt('./hist/history.losses_%i' %(i+1), self.autoencoder.history.losses, delimiter=',')
-            np.savetxt('./hist/history.val_losses_%i' %(i+1), self.autoencoder.history.val_losses, delimiter=',')
+            np.savetxt(self.path + '/hist/history.losses_%i' %(i+1), self.autoencoder.history.losses, delimiter=',')
+            np.savetxt(self.path + '/hist/history.val_losses_%i' %(i+1), self.autoencoder.history.val_losses, delimiter=',')
             print("Completed %i epochs" % ((i+1) * self.epochs))
 
     def history(self):
         """
+        Call method after training.
+
         Compile loss value.
-        Saves history in "./hist/hist_tot".
+        Saves history in "cvae/hist/hist_tot".
 
         Plot loss value.
         Plot train & validation loss.
-        Saves figures in "./fig/history.png".
+        Saves figures in "cvae/fig/history.png".
         """
 
         # TODO: Add exception if "./hist/history.losses_%i" does not exist (inside for loop).
 
         hist = np.zeros(((self.nb_end - self.nb_start), 3))
         for i in range ((self.nb_start + 1), (self.nb_end + 1)):
-            hist_loss = np.loadtxt("./hist/history.losses_%i" %i)
-            hist_val_loss = np.loadtxt("./hist/history.val_losses_%i" %i)
+            hist_loss = np.loadtxt(self.path + "/hist/history.losses_%i" %i)
+            hist_val_loss = np.loadtxt(self.path + "/hist/history.val_losses_%i" %i)
             tmp = np.array([i, hist_loss, hist_val_loss])
             hist[i-1] = tmp
-        np.savetxt('./hist/hist_tot', hist, delimiter=' ')
+        np.savetxt(self.path + '/hist/hist_tot', hist, delimiter=' ')
 
         plt.switch_backend('agg')
         plt.semilogx(hist[:, 0], hist[:, 1], color="blue", linewidth=1.5, linestyle="-", label="train_loss")
         plt.semilogx(hist[:, 0], hist[:, 2], color="red",  linewidth=3.5, linestyle=":", label="test_loss")
         plt.legend(loc='upper right')
         # plt.ylim(np.amin(hist[:,1:3]/np.amax(hist[:, 1:3])),np.amax(hist[:,1:3]/np.amax(hist[:, 1:3])))
-        plt.savefig('./fig/history.png', dpi=600)
+        plt.savefig(self.path + '/fig/history.png', dpi=600)
         plt.clf()
 
     def plot(self):
         """
-        Generates plots (.png files) stored in "./fig/".
-
+        Generates plots (.png files) stored in "/cvae/fig/".
         """
         # Load data to analyze
         conv_full_train = self.X_train[0:]
@@ -331,14 +341,15 @@ class CVAE(object):
             print("**********************************************loading", load)
             # TODO: Add exception handling checking that the file exists
             # loading model
-            self.autoencoder.load("./model/model_%i" %load)    
+            self.autoencoder.load(self.path + "/model/model_%i" %load)    
        
             print("Decode image for train data")
             # Decode images        
             decoded_imgs_full = self.autoencoder.decode(conv_full_train)
             # Save decoded array to file   
-            np.savetxt('./imgs/decoded_train_%i.out' %load, np.reshape(decoded_imgs_full[:, 0:self.row, 0:self.col, :], 
-                        (len(decoded_imgs_full), (self.row *self.col))), fmt='%f')  
+            np.savetxt(self.path + '/imgs/decoded_train_%i.out' %load,
+                       np.reshape(decoded_imgs_full[:, 0:self.row, 0:self.col, :], 
+                       (len(decoded_imgs_full), (self.row *self.col))), fmt='%f')  
 
             # Plot decoded images
             plt.switch_backend('agg')
@@ -349,7 +360,7 @@ class CVAE(object):
                 # Display original
                 ax = plt.subplot(2, self.n_dec, i + 1)                                                         
                 plt.imshow(conv_full_train[i + self.pick, 0:self.row , 0:self.col, :].reshape(self.row, self.col))
-                np.savetxt('./imgs/original_imgs_train_%i_%i.out' %(i, load), 
+                np.savetxt(self.path + '/imgs/original_imgs_train_%i_%i.out' %(i, load), 
                            (conv_full_train[i + self.pick, 0:self.row , 0:self.col, :].reshape(self.row, self.col)))
                 plt.colorbar(orientation='vertical')
                 ax.get_xaxis().set_visible(False)
@@ -358,20 +369,21 @@ class CVAE(object):
                 # Display reconstruction
                 ax = plt.subplot(2, self.n_dec, i + 1 + self.n_dec)
                 plt.imshow(decoded_imgs_full[i + self.pick, 0:self.row, 0:self.col, :].reshape(self.row, self.col))
-                np.savetxt('./imgs/decoded_imgs_train_%i_%i.out' %(i, load), 
+                np.savetxt(self.path + '/imgs/decoded_imgs_train_%i_%i.out' %(i, load), 
                            (decoded_imgs_full[i + self.pick, 0:self.row, 0:self.col, :].reshape(self.row, self.col)))
                 plt.colorbar(orientation='vertical')
                 ax.get_xaxis().set_visible(False)
                 ax.get_yaxis().set_visible(False)
 
-            plt.savefig('./fig/decoded_train_%i.png' %load, dpi=600)
+            plt.savefig(self.path + '/fig/decoded_train_%i.png' %load, dpi=600)
             plt.clf()
           
             print("Decode image for test data")
             # Decode images      
             decoded_imgs_full = self.autoencoder.decode(conv_full_test)
             # Save decoded array to file   
-            np.savetxt('./imgs/decoded_test_%i.out' %load, np.reshape(decoded_imgs_full[:, 0:self.row, 0:self.col, :], 
+            np.savetxt(self.path + '/imgs/decoded_test_%i.out' %load,
+                       np.reshape(decoded_imgs_full[:, 0:self.row, 0:self.col, :], 
                        (len(decoded_imgs_full), (self.row * self.col))), fmt='%f')  
 
             # Plot decoded images
@@ -381,7 +393,7 @@ class CVAE(object):
                 # Display original
                 ax = plt.subplot(2, self.n_dec, i + 1)                                                         
                 plt.imshow(conv_full_train[i + self.pick, 0:self.row, 0:self.col, :].reshape(self.row, self.col))
-                np.savetxt('./imgs/original_imgs_test_%i_%i.out' %(i,load), 
+                np.savetxt(self.path + '/imgs/original_imgs_test_%i_%i.out' %(i,load), 
                             (conv_full_train[i + self.pick, 0:self.row, 0:self.col, :].reshape(self.row, self.col)))
                 plt.colorbar(orientation='vertical')
                 ax.get_xaxis().set_visible(False)
@@ -390,13 +402,13 @@ class CVAE(object):
                 # Display reconstruction
                 ax = plt.subplot(2, self.n_dec, i + 1 + self.n_dec)
                 plt.imshow(decoded_imgs_full[i + self.pick, 0:self.row, 0:self.col, :].reshape(self.row, self.col))
-                np.savetxt('./imgs/decoded_imgs_test_%i_%i.out' %(i, load), 
+                np.savetxt(self.path + '/imgs/decoded_imgs_test_%i_%i.out' %(i, load), 
                             (decoded_imgs_full[i+self.pick, 0:self.row, 0:self.col, :].reshape(self.row, self.col)))
                 plt.colorbar(orientation='vertical')
                 ax.get_xaxis().set_visible(False)
                 ax.get_yaxis().set_visible(False)
 
-            plt.savefig('./fig/decoded_test_%i.png' %load, dpi=600)
+            plt.savefig(self.path + '/fig/decoded_test_%i.png' %load, dpi=600)
             plt.clf()  
 	           
             print("Encode image for train data")
@@ -404,7 +416,7 @@ class CVAE(object):
             # Project inputs on the latent space
             x_pred_encoded = self.autoencoder.return_embeddings(conv_full_train)
             # Save encoded array to file 
-            np.savetxt('./imgs/encoded_train_%i.out' %load, x_pred_encoded, fmt='%f')
+            np.savetxt(self.path + '/imgs/encoded_train_%i.out' %load, x_pred_encoded, fmt='%f')
 
             # Plot 1: 
             Dmax = y_train_2
@@ -432,15 +444,15 @@ class CVAE(object):
             ax.set_zlabel('VAE 2')
             scalarMap.set_array(Dmax)
             fig.colorbar(scalarMap)
-            plt.savefig('./fig/encoded_train_%i.png' %load, dpi=600)
+            plt.savefig(self.path + '/fig/encoded_train_%i.png' %load, dpi=600)
             plt.clf()
 
             print("Encode image for test data")
             # Encode images 
             # Project inputs on the latent space
-            x_pred_encoded = autoencoder.return_embeddings(conv_full_test)
+            x_pred_encoded = self.autoencoder.return_embeddings(conv_full_test)
             # Save encoded array to file
-            np.savetxt('./imgs/encoded_test_%i.out' %load, x_pred_encoded, fmt='%f')
+            np.savetxt(self.path + '/imgs/encoded_test_%i.out' %load, x_pred_encoded, fmt='%f')
 
             # Plot 2: 
             Dmax = y_test_2
@@ -468,7 +480,7 @@ class CVAE(object):
             ax.set_zlabel('VAE 2')
             scalarMap.set_array(Dmax)
             fig.colorbar(scalarMap)
-            plt.savefig('./fig/encoded_test_%i.png' %load, dpi=600)
+            plt.savefig(self.path + '/fig/encoded_test_%i.png' %load, dpi=600)
             plt.clf()
 	          
             print("Generate image")
@@ -494,5 +506,5 @@ class CVAE(object):
                            j * self.col: (j + 1) * self.col] = digit
             plt.figure(figsize=(10, 10))
             plt.imshow(figure)
-            plt.savefig('./fig/generated_%i.png' %load, dpi=600)
+            plt.savefig(self.path + '/fig/generated_%i.png' %load, dpi=600)
             plt.clf()
