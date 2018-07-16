@@ -206,9 +206,16 @@ class CVAE(object):
            tensor_shape = (1,image_size[0],image_size[1])
         else:
            tensor_shape = (image_size[0],image_size[1],1)
+        # OLD
+        #X_train = X_train.reshape((X_train.shape[0],) + tensor_shape)
+        #X_test = X_test.reshape((X_test.shape[0],) + tensor_shape)
+        #print("Reshaped data:", "Train:", np.shape(X_train), "Test:", np.shape(X_test))
+        #
+        #NEW A. Brace 7/16/2018, comment: Ask Sindhu why he didn't reshape X_pred.
         X_train = X_train.reshape((X_train.shape[0],) + tensor_shape)
         X_test = X_test.reshape((X_test.shape[0],) + tensor_shape)
-        print("Reshaped data:", "Train:", np.shape(X_train), "Test:", np.shape(X_test))
+        X_pred = X_pred.reshape((X_pred.shape[0],) + tensor_shape)
+        print("Reshaped data:", "Train:", np.shape(X_train), "Test:", np.shape(X_test), "Prediction:", np.shape(X_pred))
 
         self.X_train = X_train
         self.X_test = X_test
@@ -316,10 +323,77 @@ class CVAE(object):
         plt.savefig(self.path + '/fig/history.png', dpi=600)
         plt.clf()
 
-    def plot(self):
+    def analyze(self, data_set, model_selection):
+        """
+        data_set : str
+            'train', 'test', or 'pred'
+        model_selection : int
+            select file number
+            EX) Want "/model/model_2", then select model_selection = 2
+
+        Generates plots (.png files) stored in "/cvae/fig/".
+        Save evaluated data in '/imgs/decoded_train_%i.out'.
+        """
+        # TODO: Add exception handling for input data
+
+        #Load, encode, decode, save both encode and decode
+
+        # 1) Select data set
+        # Load data to analyze
+        data = np.array([])
+        if data_set == 'train':
+            data = self.X_train[0:]
+        else if data_set == 'test':
+            data = self.X_test[0:]
+        else if data_set == 'pred':
+            data = self.X_pred[0:]
+                 
+        print("Loading", model_selection)
+        # TODO: Add exception handling checking that the file exists
+        # 2) Loading model
+        self.load_weights(self.path + "/model/model_%i" %model_selection)   
+       
+        print("Decode image for train data")
+        # 3) Decode images        
+        decoded_imgs_full = self.decode(data)
+        # 4) Save decoded array to file   
+        np.savetxt(self.path + '/imgs/decoded_train_%i.out' %model_selection,
+                   np.reshape(decoded_imgs_full[:, 0:self.row, 0:self.col, :], 
+                   (len(decoded_imgs_full), (self.row *self.col))), fmt='%f')
+
+         print("Encode image for train data")
+         # Encode images
+         # 5) Project inputs on the latent space
+         x_pred_encoded = self.encode(data)
+         # 6) Save encoded array to file 
+         np.savetxt(self.path + '/imgs/encoded_train_%i.out' %model_selection, x_pred_encoded, fmt='%f')
+
+    def load_weights(self, weight_path):
+        """
+        weight_path : str      
+        """
+        self.autoencoder.load(weight_path)   
+
+    def decode(self, data):
+        return self.autoencoder.decode(data)
+
+    def encode(self, data):
+        return self.autoencoder.return_embeddings(data)
+
+    def decode_pred(self):
+        return self.autoencoder.decode(X_pred)
+
+    def encode_pred(self):
+        return self.autoencoder.return_embeddings(data)
+
+    def analyze_all(self):
         """
         Generates plots (.png files) stored in "/cvae/fig/".
         """
+        # TODO: Break up functions into several smaller plotting funcions
+        #Load, encode, decode, save both encode and decode
+
+        # 1) Select data set (just one line)
         # Load data to analyze
         conv_full_train = self.X_train[0:]
         conv_full_test = self.X_test[0:]
@@ -332,25 +406,25 @@ class CVAE(object):
         y_pred_0 = label[self.sep_2:self.sep_3, 0]
         y_pred_2 = label[self.sep_2:self.sep_3, 2]
       
-        col_dim = self.col
-
         # For generator images (for latent space = nD)
         z_axis = np.arange(self.latent_dim - 2)
 
         for load in range(self.load_start, self.load_end, self.load_step):
-            print("**********************************************loading", load)
+            # need
+            #########################
+            print("Loading", load)
             # TODO: Add exception handling checking that the file exists
-            # loading model
+            # 2) Loading model
             self.autoencoder.load(self.path + "/model/model_%i" %load)    
        
             print("Decode image for train data")
-            # Decode images        
+            # 3) Decode images        
             decoded_imgs_full = self.autoencoder.decode(conv_full_train)
             # Save decoded array to file   
             np.savetxt(self.path + '/imgs/decoded_train_%i.out' %load,
                        np.reshape(decoded_imgs_full[:, 0:self.row, 0:self.col, :], 
                        (len(decoded_imgs_full), (self.row *self.col))), fmt='%f')  
-
+            ###########################
             # Plot decoded images
             plt.switch_backend('agg')
             plt.figure(figsize=(20, 4))
@@ -413,10 +487,13 @@ class CVAE(object):
 	           
             print("Encode image for train data")
             # Encode images
-            # Project inputs on the latent space
+            # 4) Project inputs on the latent space
             x_pred_encoded = self.autoencoder.return_embeddings(conv_full_train)
-            # Save encoded array to file 
+            # 5) Save encoded array to file 
             np.savetxt(self.path + '/imgs/encoded_train_%i.out' %load, x_pred_encoded, fmt='%f')
+
+            # PLOT in another subclass
+
 
             # Plot 1: 
             Dmax = y_train_2

@@ -250,7 +250,7 @@ class conv_variational_autoencoder(object):
         #self.model.fit(data,data,batch_size,epochs=epochs,shuffle=True,
         #               validation_data=(data,data),callbacks=[self.history]);
     	# NEW A. Brace 7/10/2018
-	self.model.fit(data,data,batch_size,epochs=epochs,shuffle=True, 
+	    self.model.fit(data,data,batch_size,epochs=epochs,shuffle=True, 
 		       validation_data=validation_data,callbacks=[self.history]);
     def save(self,filepath):
         '''
