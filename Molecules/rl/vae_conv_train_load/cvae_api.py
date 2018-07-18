@@ -26,7 +26,7 @@ class CVAE(object):
 
     def __init__(self, path="./", n_traj=2, f_traj=10000, sep_train=0.8, sep_test=0.9,
                  sep_pred=1, choice=0, row=21, col=21, pad_row=1, pad_col = 1,
-                 channels=1, batch_size=1000, conv_layers=3, feature_maps=[128,128,128,128],
+                 channels=1, batch_size=1000, conv_layers=4, feature_maps=[64,64,64,64],
                  filter_shapes=[(3,3),(3,3),(3,3),(3,3)], strides=[(1,1),(2,2),(1,1),(1,1)],
                  dense_layers=1, dense_neurons=[128], dense_dropouts=[0], latent_dim=3,
                  epochs=1, nb_start=0, nb_end=50, nb_select=10, load_step=10,
@@ -394,6 +394,9 @@ class CVAE(object):
 
     def encode_pred(self):
         return self.autoencoder.return_embeddings(self.X_pred)
+
+    def summary(self):
+	self.autoencoder.summary()    
 
     def analyze_all(self):
         """

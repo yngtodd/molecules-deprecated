@@ -1,5 +1,6 @@
 from __future__ import print_function
 import os
+import numpy as np
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
@@ -70,7 +71,7 @@ class RL(object):
 	    path = "./results/iteration_rl_"
 	    if not os.path.exists(path + "%i" % i):
             	os.mkdir(path + "%i" % i, 0755)
-	    reward_data = np.array([])
+	    #reward_data = np.array([])
 	    for j in range(1, self.sim_num + 1):
 		path_1 = path + "%i/sim_%i_%i/" % (i,i,j)
 		if not os.path.exists(path_1):
@@ -109,5 +110,5 @@ class RL(object):
 	        # Evaluate reward function
 	        # Kill some models and spawn new ones    	
 
-rl = RL(cvae_weights_path="/home/a05/git_work/molecules/Molecules/rl/vae_conv_train_load/model/model_50", iterations=2, sim_num=4)
+rl = RL(cvae_weights_path="../model_150.dms", iterations=2, sim_num=4)
 rl.execute()
