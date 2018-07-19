@@ -18,7 +18,7 @@ from collections import Counter
 
 class RL(object):
 
-    def __init__(self, cvae_weights_path, iterations=10, sim_num=10, sim_steps=1000, initial_pdb=None):
+    def __init__(self, cvae_weights_path, iterations=10, sim_num=10, sim_steps=20000, initial_pdb=None):
 	if initial_pdb == None:
 	     # For testing purposes
 	     self.initial_pdb = '/home/a05/data/fs-peptide/raw_MD_data/fs-peptide.pdb'
@@ -71,6 +71,7 @@ class RL(object):
     def execute(self):
 	pdb_file = 'output.pdb'
 	dcd_file = 'output-1.dcd'
+	scatter_data = []
 	# Put DCD reporter in a loop and put only a fixed number (10000) frames
 	# in each output-i.dcd file. Where i ranges from (1,n).
 	for i in range(1, self.iterations + 1):
@@ -100,7 +101,7 @@ class RL(object):
             # Requires pre-trained CVAE.
 	    for j in range(1, self.sim_num + 1):
 		path_1 = path + "%i/sim_%i_%i/" % (i,i,j)
-                cvae = CVAE(path=path_1, sep_train=0, sep_test=0, sep_pred=1)
+                cvae = CVAE(path=path_1, sep_train=0, sep_test=0, sep_pred=1, f_traj=self.sim_steps/100)
                 cvae.load_contact_matrix(path_1 + "native-contact/data/cont-mat.dat",
                                          path_1 + "native-contact/data/cont-mat.array")
 		cvae.compile()
@@ -108,7 +109,8 @@ class RL(object):
                 encoded_data = cvae.encode_pred()
                 print("Encoded data shape:",encoded_data.shape)
 		np.save(path_1 + "/encoded_data.npy", encoded_data)
-	 	# Scatter before clustering
+	 	scatter_data.append(encoded_data)
+		# Scatter before clustering
 		fig = plt.figure()
 		ax = fig.add_subplot(111, projection='3d')
 		ax.scatter(encoded_data[:,0], encoded_data[:,1], encoded_data[:,2],
@@ -148,7 +150,9 @@ c='b', marker='o')
 	        # Generate contact matrix
 	        # Pass CM's to CVAE
 	        # Evaluate reward function
-	        # Kill some models and spawn new ones    	
+	        # Kill some models and spawn new ones 
+	out = np.array(scatter_data)
+	np.save("./scatter.npy", out)   	
 
 rl = RL(cvae_weights_path="../model_150.dms", iterations=2, sim_num=4)
 rl.execute()
