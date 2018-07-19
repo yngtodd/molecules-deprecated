@@ -10,6 +10,12 @@ sys.path.append('../')
 from extract_native_contact.extract_native_contact import ExtractNativeContact
 from vae_conv_train_load.cvae_api import CVAE
 
+# For clustering
+from sklearn.cluster import DBSCAN
+import matplotlib.pyplot as plt
+plt.switch_backend('agg')
+from collections import Counter
+
 class RL(object):
 
     def __init__(self, cvae_weights_path, iterations=10, sim_num=10, sim_steps=1000, initial_pdb=None):
@@ -89,7 +95,7 @@ class RL(object):
 		path_1 = path + "%i/sim_%i_%i/" % (i,i,j)
 		cm = ExtractNativeContact(path_1, pdb_file, dcd_file)
 		cm.generate_contact_matrix()
-	    
+	   	 
 	    # Process contact matrix with CVAE algorithm for each simulation.
             # Requires pre-trained CVAE.
 	    for j in range(1, self.sim_num + 1):
@@ -97,13 +103,47 @@ class RL(object):
                 cvae = CVAE(path=path_1, sep_train=0, sep_test=0, sep_pred=1)
                 cvae.load_contact_matrix(path_1 + "native-contact/data/cont-mat.dat",
                                          path_1 + "native-contact/data/cont-mat.array")
-                cvae.compile()
+		cvae.compile()
                 cvae.load_weights(self.cvae_weights_path)
                 encoded_data = cvae.encode_pred()
                 print("Encoded data shape:",encoded_data.shape)
-                #kmeans, tsne, 
-                
+		np.save(path_1 + "/encoded_data.npy", encoded_data)
+	 	# Scatter before clustering
+		fig = plt.figure()
+		ax = fig.add_subplot(111, projection='3d')
+		ax.scatter(encoded_data[:,0], encoded_data[:,1], encoded_data[:,2],
+c='b', marker='o')
+		ax.set_xlabel("Embedded X Label")
+                ax.set_ylabel("Embedded Y Label")
+                ax.set_zlabel("Embedded Z Label")
+                plt.title('Latent Space')
+		plt.xlim(np.amin(encoded_data[:,0]),np.amax(encoded_data[:,0]))
+		plt.ylim(np.amin(encoded_data[:,1]),np.amax(encoded_data[:,1]))
+		ax.set_zlim(np.amin(encoded_data[:,2]),np.amax(encoded_data[:,2]))
+		plt.savefig(path_1+"/scatter.png")
+                plt.clf()
+			
+		 # Compute DBSCAN
+        	db = DBSCAN(eps=0.1, min_samples=10).fit(encoded_data)
+        	n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
 
+		print('Estimated number of clusters: %d' % n_clusters_)
+		
+		print(Counter(db.labels_))
+		fig = plt.figure()
+		ax = fig.add_subplot(111, projection='3d')
+		colors = db.labels_
+		ax.scatter(encoded_data[:,0], encoded_data[:,1], encoded_data[:,2], c=colors, marker='o')
+		ax.set_xlabel("Embedded X Label")
+		ax.set_ylabel("Embedded Y Label")
+		ax.set_zlabel("Embedded Z Label")
+		plt.title('Estimated number of clusters: %d' % n_clusters_)    
+	        #kmeans, tsne, 
+		plt.xlim(np.amin(encoded_data[:,0]),np.amax(encoded_data[:,0]))
+                plt.ylim(np.amin(encoded_data[:,1]),np.amax(encoded_data[:,1]))
+                ax.set_zlim(np.amin(encoded_data[:,2]),np.amax(encoded_data[:,2]))
+                plt.savefig(path_1+"/clusters.png")
+		plt.clf()
 		
 	        # Generate contact matrix
 	        # Pass CM's to CVAE
