@@ -37,7 +37,7 @@ def scatter_plot(data, title, save_path, color='b'):
     plt.xlim(np.amin(data[:, 0]), np.amax(data[:, 0]))
     plt.ylim(np.amin(data[:, 1]), np.amax(data[:, 1]))
     ax.set_zlim(np.amin(data[:, 2]), np.amax(data[:, 2]))
-    ax.scatter(data[:, 0], data[:, 1], data[:, 2], c='b', marker='o')
+    ax.scatter(data[:, 0], data[:, 1], data[:, 2], c=color, marker='o')
     plt.savefig(save_path)
     plt.clf()
 
@@ -46,7 +46,11 @@ class RL(object):
     def __init__(self, cvae_weights_path, iterations=10, sim_num=10, sim_steps=20000, traj_out_freq=100, initial_pdb=None):
 	if initial_pdb == None:
 	     # For testing purposes
-	     self.initial_pdb = '/home/a05/data/fs-peptide/raw_MD_data/fs-peptide.pdb'
+	     self.initial_pdb = ['/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-0.pdb',
+			         '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-1.pdb',
+				 '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-2.pdb',
+				 '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-3.pdb',
+				 '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-4.pdb']
 	else:
 	     self.initial_pdb = initial_pdb
         
@@ -62,13 +66,21 @@ class RL(object):
 	if not os.path.exists("./results"):
             os.mkdir("./results", 0755)
     
-    def run_simulation(self, path, out_pdb_file, out_dcd_file, ff='amber14-all.xml', water_model='amber14/tip3pfb.xml'):
+    def run_simulation(self, path, out_pdb_file, out_dcd_file, initial_rl_loop=False, ff='amber14-all.xml', water_model='amber14/tip3pfb.xml'):
         if not os.path.exists(path):
 	    raise Exception("Path: " + str(path) + " does not exist!")
-
+       
 	# TODO: Add other parameters for simulation + exception handling
-	pdb_file = self.initial_pdb
-	pdb = PDBFile(pdb_file)
+	if initial_rl_loop == True:
+	    if len(self.initial_pdb) == 0:
+		raise Exception("PDB mismatch. Number of md_sims must match number of initial pdb files given.")
+	    pdb_file = self.initial_pdb[0]
+	    self.initial_pdb = self.initial_pdb[1:]
+	    pdb = PDBFile(pdb_file)
+	else:
+	    pdb_file = p # Taken from earlier rl loop
+	    pdb = PDBFile(pdb_file)
+        
 	#print "Load PDB"
 	forcefield = ForceField(ff, water_model)
 	#print "Define force field"
@@ -113,8 +125,11 @@ class RL(object):
 		# TODO: Optimize so that the simulation jobs are split over
 		#       the available GPU nodes. May be possible with python
 		#	subprocess. It would be a good idea to pull 
-		#	self.run_simulation(path_1) out of the inner for loop.
-		self.run_simulation(path_1, pdb_file, dcd_file)
+		#	self.run_simulation(path_1) out of the inner for loop
+		if i == 1:
+		    self.run_simulation(path_1, pdb_file, dcd_file, initial_rl_loop = True)
+		else:
+		    self.run_simulation(path_1, pdb_file, dcd_file)
 	   
 	    # Calculate contact matrix .array and .dat files for each simulation
 	    # run. Files are place in native-contact/data inside each simulation
@@ -141,35 +156,49 @@ class RL(object):
                 print("Encoded data shape:",encoded_data.shape)
 		np.save(path_1 + "/cluster/encoded_data.npy", encoded_data)
 	 	scatter_data.append(encoded_data)
-		scatter_plot(encoded_data, 'Latent Space (Before Clustering)', path_1+"/cluster/scatter.png")	
-		 # Compute DBSCAN
+		scatter_plot(encoded_data, 'Latent Space :(Before Clustering)', path_1+"/cluster/scatter.png")	
+		# Compute DBSCAN
         	db = DBSCAN(eps=0.1, min_samples=3).fit(encoded_data)
         	n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
 		print('Estimated number of clusters: %d' % n_clusters_)
 		print(Counter(db.labels_))
+		print(type(Counter(db.labels_)))
+		print(len(db.core_sample_indices_))
+		print(db.core_sample_indices_)
 		colors = db.labels_
-		scatter_plot(encoded_data, 'Latent Space (Number of Clusters: %d, Parameters: eps=%.2f, min_samples=%i)' % (n_clusters_, 0.1, 3), path_1+"/cluster/clusters.png", color=colors)
+		scatter_plot(encoded_data, 'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, 0.1, 3), path_1+"/cluster/clusters.png", color=colors)
 
 	        # Generate contact matrix
 	        # Pass CM's to CVAE
 	        # Evaluate reward function
-	        # Kill some models and spawn new ones 
-	if not os.path.exists("./results/final_output"):
-	    os.mkdir("./results/final_output")
-	all_encoded_data = np.array(scatter_data)
-	all_encoded_data = np.reshape(all_encoded_data, (all_encoded_data.shape[0] * all_encoded_data.shape[1], all_encoded_data.shape[-1]))
-	np.save("./results/final_output/all_encoded_data.npy", all_encoded_data)
-	print("Final encoded data shape:", all_encoded_data.shape)	
-	scatter_plot(all_encoded_data, 'Latent Space (Before Clustering)', "./results/final_output/scatter.png")	
+	        # Kill some models and spawn new ones
 
-	# Compute DBSCAN
-        db = DBSCAN(eps=0.1, min_samples=3).fit(all_encoded_data)
-        n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
-        print('Estimated number of clusters: %d' % n_clusters_)
-        print(Counter(db.labels_))
-        colors = db.labels_
-        scatter_plot(all_encoded_data, 'Latent Space (Number of Clusters: %d, Parameters: eps=%.2f, min_samples=%i)' % (n_clusters_, 0.1, 3), "./results/final_output/clusters.png", color=colors)
+ 
+	    if not os.path.exists("./results/final_output"):
+	        os.mkdir("./results/final_output")
+	    print("Scatter Data")
+	    print(type(scatter_data))
+            print(len(scatter_data))
+            #print(scatter_data)
+	    all_encoded_data = np.array(scatter_data[:])
+	    print("All encoded data")
+	    print(all_encoded_data.shape)
+	    print(type(all_encoded_data))
+	    print(len(all_encoded_data))
+	    #print(all_encoded_data)
+	    all_encoded_data = np.reshape(all_encoded_data, (all_encoded_data.shape[0] * all_encoded_data.shape[1], all_encoded_data.shape[-1]))
+	    np.save("./results/final_output/all_encoded_data.npy", all_encoded_data)
+	    print("Final encoded data shape:", all_encoded_data.shape)	
+	    scatter_plot(all_encoded_data, 'Latent Space (Before Clustering)', "./results/final_output/scatter.png")	
+
+	    # Compute DBSCAN
+            db = DBSCAN(eps=0.2, min_samples=2).fit(all_encoded_data)
+            n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
+            print('Estimated number of clusters: %d' % n_clusters_)
+            print(Counter(db.labels_))
+            colors = db.labels_
+            scatter_plot(all_encoded_data, 'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, 0.1, 3), "./results/final_output/clusters.png", color=colors)
 
 
-rl = RL(cvae_weights_path="../model_150.dms", iterations=1, sim_num=4)
+rl = RL(cvae_weights_path="../model_150.dms", iterations=1, sim_num=5)
 rl.execute()
