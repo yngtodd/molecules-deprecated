@@ -98,6 +98,7 @@ class ExtractNativeContact(object):
 	    # crude definition of salt bridges as contacts between CA atoms;
 	    #CA = "(name CA and resid 237-248 283-288 311-319 345-349 394-399)";
 	    #CA = "(name CA and resid 42:76)";
+	    # put in backbone
 	    CA = "(name CA and resid 1:24)";
 	    #CA = "(name CA and resid 42:76)";
 	    CA0 = u0.select_atoms(CA);

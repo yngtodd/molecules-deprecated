@@ -16,6 +16,31 @@ import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 from collections import Counter
 
+def scatter_plot(data, title, save_path, color='b'):
+    """
+    data : numpy array
+	must be of dimension (n,3).
+    title : str
+	title of desired plot.
+    save_path : str
+	file name of save location desired. Containing directory must
+	already exist.
+    color : str of list
+	color scheme desired.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    plt.title(title)
+    plt.xlim(np.amin(data[:, 0]), np.amax(data[:, 0]))
+    plt.ylim(np.amin(data[:, 1]), np.amax(data[:, 1]))
+    ax.set_zlim(np.amin(data[:, 2]), np.amax(data[:, 2]))
+    ax.scatter(data[:, 0], data[:, 1], data[:, 2], c='b', marker='o')
+    plt.savefig(save_path)
+    plt.clf()
+
 class RL(object):
 
     def __init__(self, cvae_weights_path, iterations=10, sim_num=10, sim_steps=20000, traj_out_freq=100, initial_pdb=None):
@@ -111,44 +136,20 @@ class RL(object):
 		cvae.compile()
                 cvae.load_weights(self.cvae_weights_path)
                 encoded_data = cvae.encode_pred()
+
+		# Clustering
                 print("Encoded data shape:",encoded_data.shape)
 		np.save(path_1 + "/cluster/encoded_data.npy", encoded_data)
 	 	scatter_data.append(encoded_data)
-		
-		# Scatter before clustering
-		fig = plt.figure()
-		ax = fig.add_subplot(111, projection='3d')
-		ax.set_xlabel("Embedded X Label")
-                ax.set_ylabel("Embedded Y Label")
-                ax.set_zlabel("Embedded Z Label")
-                plt.title('Latent Space (Before Clustering)')
-		plt.xlim(np.amin(encoded_data[:, 0]), np.amax(encoded_data[:, 0]))
-		plt.ylim(np.amin(encoded_data[:, 1]), np.amax(encoded_data[:, 1]))
-		ax.set_zlim(np.amin(encoded_data[:, 2]), np.amax(encoded_data[:, 2]))
-		ax.scatter(encoded_data[:, 0], encoded_data[:, 1], encoded_data[:, 2],
-c='b', marker='o')
-		plt.savefig(path_1+"/cluster/scatter.png")
-                plt.clf()
-			
+		scatter_plot(encoded_data, 'Latent Space (Before Clustering)', path_1+"/cluster/scatter.png")	
 		 # Compute DBSCAN
-        	db = DBSCAN(eps=0.1, min_samples=10).fit(encoded_data)
+        	db = DBSCAN(eps=0.1, min_samples=3).fit(encoded_data)
         	n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
 		print('Estimated number of clusters: %d' % n_clusters_)
 		print(Counter(db.labels_))
 		colors = db.labels_
-		fig = plt.figure()
-		ax = fig.add_subplot(111, projection='3d')
-		ax.set_xlabel("Embedded X Label")
-		ax.set_ylabel("Embedded Y Label")
-		ax.set_zlabel("Embedded Z Label")
-		plt.title('Latent Space (Estimated Number of Clusters: %d)' % n_clusters_)    
-		plt.xlim(np.amin(encoded_data[:, 0]), np.amax(encoded_data[:, 0]))
-                plt.ylim(np.amin(encoded_data[:, 1]), np.amax(encoded_data[:, 1]))
-                ax.set_zlim(np.amin(encoded_data[:, 2]), np.amax(encoded_data[:, 2]))
-		ax.scatter(encoded_data[:, 0], encoded_data[:, 1], encoded_data[:, 2], c=colors, marker='o')
-                plt.savefig(path_1+"/cluster/clusters.png")
-		plt.clf()
-		
+		scatter_plot(encoded_data, 'Latent Space (Number of Clusters: %d, Parameters: eps=%.2f, min_samples=%i)' % (n_clusters_, 0.1, 3), path_1+"/cluster/clusters.png", color=colors)
+
 	        # Generate contact matrix
 	        # Pass CM's to CVAE
 	        # Evaluate reward function
@@ -159,39 +160,16 @@ c='b', marker='o')
 	all_encoded_data = np.reshape(all_encoded_data, (all_encoded_data.shape[0] * all_encoded_data.shape[1], all_encoded_data.shape[-1]))
 	np.save("./results/final_output/all_encoded_data.npy", all_encoded_data)
 	print("Final encoded data shape:", all_encoded_data.shape)	
-	
-	# Scatter before clustering
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.set_xlabel("Embedded X Label")
-        ax.set_ylabel("Embedded Y Label")
-        ax.set_zlabel("Embedded Z Label")
-        plt.title('Latent Space (Before Clustering)')
-        plt.xlim(np.amin(all_encoded_data[:, 0]), np.amax(all_encoded_data[:, 0]))
-        plt.ylim(np.amin(all_encoded_data[:, 1]), np.amax(all_encoded_data[:, 1]))
-        ax.set_zlim(np.amin(all_encoded_data[:, 2]), np.amax(all_encoded_data[:, 2]))
-        ax.scatter(all_encoded_data[:, 0], all_encoded_data[:, 1], all_encoded_data[:, 2],c='b', marker='o')
-        plt.savefig("./results/final_output/scatter.png")
-        plt.clf()
+	scatter_plot(all_encoded_data, 'Latent Space (Before Clustering)', "./results/final_output/scatter.png")	
 
 	# Compute DBSCAN
-        db = DBSCAN(eps=0.1, min_samples=10).fit(all_encoded_data)
+        db = DBSCAN(eps=0.1, min_samples=3).fit(all_encoded_data)
         n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
         print('Estimated number of clusters: %d' % n_clusters_)
         print(Counter(db.labels_))
         colors = db.labels_
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.set_xlabel("Embedded X Label")
-        ax.set_ylabel("Embedded Y Label")
-        ax.set_zlabel("Embedded Z Label")
-        plt.title('Latent Space (Estimated Number of Clusters: %d)' % n_clusters_)
-        plt.xlim(np.amin(all_encoded_data[:, 0]), np.amax(all_encoded_data[:, 0]))
-        plt.ylim(np.amin(all_encoded_data[:, 1]), np.amax(all_encoded_data[:, 1]))
-        ax.set_zlim(np.amin(all_encoded_data[:, 2]), np.amax(all_encoded_data[:, 2]))
-        ax.scatter(all_encoded_data[:, 0], all_encoded_data[:, 1], all_encoded_data[:, 2], c=colors, marker='o')
-        plt.savefig("./results/final_output/clusters.png")
-        plt.clf()   	
+        scatter_plot(all_encoded_data, 'Latent Space (Number of Clusters: %d, Parameters: eps=%.2f, min_samples=%i)' % (n_clusters_, 0.1, 3), "./results/final_output/clusters.png", color=colors)
 
-rl = RL(cvae_weights_path="../model_150.dms", iterations=2, sim_num=4)
+
+rl = RL(cvae_weights_path="../model_150.dms", iterations=1, sim_num=4)
 rl.execute()
