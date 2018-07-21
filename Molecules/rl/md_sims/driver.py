@@ -43,7 +43,7 @@ def scatter_plot(data, title, save_path, color='b'):
 
 class RL(object):
 
-    def __init__(self, cvae_weights_path, iterations=10, sim_num=10, sim_steps=20000, traj_out_freq=100, initial_pdb=None):
+    def __init__(self, cvae_weights_path, iterations=10, sim_num=10, sim_steps=20000, traj_out_freq=100, native_pdb=None, initial_pdb=None):
 	if initial_pdb == None:
 	     # For testing purposes
 	     self.initial_pdb = ['/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-0.pdb',
@@ -53,12 +53,19 @@ class RL(object):
 				 '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-4.pdb']
 	else:
 	     self.initial_pdb = initial_pdb
-        
-	self.iterations = iterations
+        if native_pdb == None:
+	    # For testing purposes
+	    self.native_pdb = '/home/a05/data/fs-peptide/raw_MD_data/fs-peptide.pdb'
+	else:
+	    self.native_pdb = native_pdb
+
+  	self.iterations = iterations
 	self.sim_num = sim_num
         self.sim_steps = sim_steps
 	self.traj_out_freq = traj_out_freq
 
+	if len(self.initial_pdb) < self.sim_num:
+            raise Exception("PDB mismatch. sim_num must match number of initial pdb files given.")
         if not os.path.exists(cvae_weights_path):
             raise Exception("Path " + str(cvae_weights_path) + " does not exist!")
         self.cvae_weights_path = cvae_weights_path
@@ -66,20 +73,17 @@ class RL(object):
 	if not os.path.exists("./results"):
             os.mkdir("./results", 0755)
     
-    def run_simulation(self, path, out_pdb_file, out_dcd_file, initial_rl_loop=False, ff='amber14-all.xml', water_model='amber14/tip3pfb.xml'):
+    def run_simulation(self, path, out_pdb_file, out_dcd_file, pdb_in=None, initial_rl_loop=False, ff='amber14-all.xml', water_model='amber14/tip3pfb.xml'):
         if not os.path.exists(path):
 	    raise Exception("Path: " + str(path) + " does not exist!")
        
 	# TODO: Add other parameters for simulation + exception handling
 	if initial_rl_loop == True:
-	    if len(self.initial_pdb) == 0:
-		raise Exception("PDB mismatch. Number of md_sims must match number of initial pdb files given.")
 	    pdb_file = self.initial_pdb[0]
 	    self.initial_pdb = self.initial_pdb[1:]
 	    pdb = PDBFile(pdb_file)
 	else:
-	    pdb_file = p # Taken from earlier rl loop
-	    pdb = PDBFile(pdb_file)
+	    pdb = PDBFile(pdb_in)
         
 	#print "Load PDB"
 	forcefield = ForceField(ff, water_model)
