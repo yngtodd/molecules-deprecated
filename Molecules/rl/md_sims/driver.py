@@ -41,6 +41,19 @@ def scatter_plot(data, title, save_path, color='b'):
     plt.savefig(save_path)
     plt.clf()
 
+def get_cluster_indices(labels, cluster=-1):
+    """
+    labels : DBSCAN.labels_ object (numpy array)
+    cluster : int
+	cluster label whose in dices are desired. 
+	cluster=-1 default automatically selects outliers. 
+    """
+    outlier_indices = []
+    for i,j in enumerate(labels):
+        if j == -1:
+            outlier_indices.append(i)
+    return outlier_indices
+
 class RL(object):
 
     def __init__(self, cvae_weights_path, iterations=10, sim_num=10, sim_steps=20000, traj_out_freq=100, native_pdb=None, initial_pdb=None):
@@ -114,6 +127,8 @@ class RL(object):
 	pdb_file = 'output.pdb'
 	dcd_file = 'output-1.dcd'
 	scatter_data = []
+	d_eps = 0.1
+	d_min_samples = 10
 	# Put DCD reporter in a loop and put only a fixed number (10000) frames
 	# in each output-i.dcd file. Where i ranges from (1,n).
 	for i in range(1, self.iterations + 1):
@@ -162,15 +177,12 @@ class RL(object):
 	 	scatter_data.append(encoded_data)
 		scatter_plot(encoded_data, 'Latent Space :(Before Clustering)', path_1+"/cluster/scatter.png")	
 		# Compute DBSCAN
-        	db = DBSCAN(eps=0.1, min_samples=3).fit(encoded_data)
+        	db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(encoded_data)
         	n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
 		print('Estimated number of clusters: %d' % n_clusters_)
 		print(Counter(db.labels_))
-		print(type(Counter(db.labels_)))
-		print(len(db.core_sample_indices_))
-		print(db.core_sample_indices_)
 		colors = db.labels_
-		scatter_plot(encoded_data, 'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, 0.1, 3), path_1+"/cluster/clusters.png", color=colors)
+		scatter_plot(encoded_data, 'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples), path_1+"/cluster/clusters.png", color=colors)
 
 	        # Generate contact matrix
 	        # Pass CM's to CVAE
@@ -180,29 +192,26 @@ class RL(object):
  
 	    if not os.path.exists("./results/final_output"):
 	        os.mkdir("./results/final_output")
-	    print("Scatter Data")
-	    print(type(scatter_data))
-            print(len(scatter_data))
+	   
             #print(scatter_data)
 	    all_encoded_data = np.array(scatter_data[:])
-	    print("All encoded data")
-	    print(all_encoded_data.shape)
-	    print(type(all_encoded_data))
-	    print(len(all_encoded_data))
-	    #print(all_encoded_data)
 	    all_encoded_data = np.reshape(all_encoded_data, (all_encoded_data.shape[0] * all_encoded_data.shape[1], all_encoded_data.shape[-1]))
 	    np.save("./results/final_output/all_encoded_data.npy", all_encoded_data)
 	    print("Final encoded data shape:", all_encoded_data.shape)	
 	    scatter_plot(all_encoded_data, 'Latent Space (Before Clustering)', "./results/final_output/scatter.png")	
 
 	    # Compute DBSCAN
-            db = DBSCAN(eps=0.2, min_samples=2).fit(all_encoded_data)
+            db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(all_encoded_data)
             n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
             print('Estimated number of clusters: %d' % n_clusters_)
             print(Counter(db.labels_))
             colors = db.labels_
-            scatter_plot(all_encoded_data, 'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, 0.1, 3), "./results/final_output/clusters.png", color=colors)
+            scatter_plot(all_encoded_data, 'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples), "./results/final_output/clusters.png", color=colors)
 
-
+	    # Get indices of outliers
+	    outlier_indices = get_cluster_indices(db.labels_)
+	    print(len(outlier_indices))
+	    print(outlier_indices)
+# Script for testing
 rl = RL(cvae_weights_path="../model_150.dms", iterations=1, sim_num=5)
 rl.execute()
