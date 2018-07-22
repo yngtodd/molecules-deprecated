@@ -43,7 +43,9 @@ def scatter_plot(data, title, save_path, color='b'):
     ax.set_zlim(np.amin(data[:, 2]), np.amax(data[:, 2]))
     ax.scatter(data[:, 0], data[:, 1], data[:, 2], c=color, marker='o')
     plt.savefig(save_path)
-    plt.clf()
+    #plt.clf()
+    plt.cla()
+    plt.close(fig)
 
 def get_cluster_indices(labels, cluster=-1):
     """
@@ -146,6 +148,10 @@ class RL(object):
 	pdb_file = 'output.pdb'
 	dcd_file = 'output-1.dcd'
 	scatter_data = []
+	pdb_stack = []
+	# spawn_pdb is a place holder to allow code to run.
+	# in the future it must be changed to an RL spwan.
+	spawn_pdb = self.initial_pdb[0]
 	d_eps = 0.1
 	d_min_samples = 10
 	# Naive rmsd threshold
@@ -170,7 +176,11 @@ class RL(object):
 		if i == 1:
 		    self.run_simulation(path_1, dcd_file, initial_rl_loop = True)
 		else:
-		    self.run_simulation(path_1, dcd_file)
+		    if len(pdb_stack) == 0:
+			self.run_simulation(path_1, dcd_file, spawn_pdb)
+		    else:
+		    	self.run_simulation(path_1, dcd_file, pdb_in=pdb_stack[-1])
+		    	pdb_stack.pop()
 	   
 	    # Calculate contact matrix .array and .dat files for each simulation
 	    # run. Files are place in native-contact/data inside each simulation
@@ -210,9 +220,14 @@ class RL(object):
 	        # Pass CM's to CVAE
 	        # Evaluate reward function
 	        # Kill some models and spawn new ones
-	
-	    int_encoded_data = np.array(scatter_data[self.sim_steps*(i - 1):])
-            int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
+	    print("scatter_data len:", len(scatter_data))
+	    int_encoded_data = []
+	    for dataset in scatter_data[(len(scatter_data) - self.sim_num):]:
+		int_encoded_data.append(dataset)
+	    #int_encoded_data = np.array(scatter_data[self.sim_steps*(i - 1):])
+            int_encoded_data = np.array(int_encoded_data)
+	    print("int_encoded_data shape:",int_encoded_data.shape)
+	    int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
 	    db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
             # Get indices of outliers
             outlier_indices = get_cluster_indices(db.labels_)
@@ -230,7 +245,8 @@ class RL(object):
 		    # Start next rl iteration with this pdb path_1
 		    print("RMSD threshold:", rmsd_threshold)
 		    print("RMSD to native contact for outlier at index %i :" % ind, rmsd_value)
-		    pass
+		    pdb_stack.append(path_1)
+		    # Queue pdb files to start new round of simulations.
 		
             # For each index in outlier_indices, check the corresponding decoded
             # contact matrix for low RMSD to native state.
@@ -256,5 +272,5 @@ class RL(object):
 
 	    
 # Script for testing
-rl = RL(cvae_weights_path="../model_150.dms", iterations=1, sim_num=5)
+rl = RL(cvae_weights_path="../model_150.dms", iterations=2, sim_num=5)
 rl.execute()
