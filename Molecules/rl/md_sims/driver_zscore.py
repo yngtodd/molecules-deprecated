@@ -16,9 +16,15 @@ import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 from collections import Counter
 
+# RMSD painted clusters
+from matplotlib import cm
+import matplotlib as mpl
+from mpl_toolkits.mplot3d import Axes3D
+
 # For reward function
 import MDAnalysis as mdanal
 from MDAnalysis.analysis.rms import RMSD
+from scipy import stats
 
 def scatter_plot(data, title, save_path, color='b'):
     """
@@ -56,7 +62,7 @@ def get_cluster_indices(labels, cluster=-1):
     """
     outlier_indices = []
     for i,j in enumerate(labels):
-        if j == -1:
+        if j == cluster:
             outlier_indices.append(i)
     return outlier_indices
 
@@ -156,7 +162,7 @@ class RL(object):
 	d_min_samples = 10
 	# Naive rmsd threshold
 	rmsd_threshold = 5.0
-	# Put DCD reporter in a loop and put only a fixed number (10000) frames
+        # Put DCD reporter in a loop and put only a fixed number (10000) frames
 	# in each output-i.dcd file. Where i ranges from (1,n).
 	for i in range(1, self.iterations + 1):
 	    path = "./results/iteration_rl_"
@@ -178,6 +184,7 @@ class RL(object):
 		else:
 		    if len(pdb_stack) == 0:
 			self.run_simulation(path_1, dcd_file, spawn_pdb)
+			print("Using spawn PDB.")
 		    else:
 		    	self.run_simulation(path_1, dcd_file, pdb_in=pdb_stack[-1])
 		    	pdb_stack.pop()
@@ -215,7 +222,7 @@ class RL(object):
 		print(Counter(db.labels_))
 		colors = db.labels_
 		scatter_plot(encoded_data, 'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples), path_1+"/cluster/clusters.png", color=colors)
-
+		    
 	        # Generate contact matrix
 	        # Pass CM's to CVAE
 	        # Evaluate reward function
@@ -233,9 +240,9 @@ class RL(object):
             outlier_indices = get_cluster_indices(db.labels_)
 	    accept_sims = []
 	    for ind in outlier_indices:
-		sim_ind = ind/(self.sim_steps/self.traj_out_freq)
-		pdb_ind = ind % (self.sim_steps/self.traj_out_freq)
-		path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i,i,sim_ind, (pdb_ind + 1))
+		sim_ind = ind/(self.sim_steps/self.traj_out_freq) + 1
+		pdb_ind = ind % (self.sim_steps/self.traj_out_freq) + 1
+		path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i, i, sim_ind, pdb_ind)
 		u = mdanal.Universe(path_1)
 		R = RMSD(u, self.native_protein)
 		#rmsd_value = rmsd(self.native_protein, u.select_atoms('protein'), center=True)
@@ -247,15 +254,59 @@ class RL(object):
 		    print("RMSD to native contact for outlier at index %i :" % ind, rmsd_value)
 		    pdb_stack.append(path_1)
 		    # Queue pdb files to start new round of simulations.
-	    	
+	    for cluster in Counter(db.labels_):
+		print(Counter(db.labels_))
+		print("Current cluster:", cluster)
+		if cluster == -1:
+		    continue
+	        indices = get_cluster_indices(labels=db.labels_, cluster=cluster)
+		print("indices length:", len(indices))
+		rmsd_values = []
+		path_to_pdb = []
+	        for ind in indices:
+		    sim_ind = ind/(self.sim_steps/self.traj_out_freq) + 1
+                    pdb_ind = ind % (self.sim_steps/self.traj_out_freq) + 1
+                    path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i,i,sim_ind, pdb_ind)
+                    u = mdanal.Universe(path_1)
+                    R = RMSD(u, self.native_protein)
+		    R.run()
+                    rmsd_values.append(R.rmsd[0,2])
+		    path_to_pdb.append((path_1, pdb_ind + 1))
+		rmsd_array = np.array(rmsd_values)
+		rmsd_zscores = stats.zscore(rmsd_array)
+		ind = 0
+		print("rmsd_values:", rmsd_array.shape)
+		print("rmsd_zscores:", rmsd_zscores.shape)
+		for zscore in rmsd_zscores:
+		   # z-score of -3 marks outlier for a normal distribution.
+		   if zscore <= -3:
+			print("RMSD to native contact for clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_value)
+			pdb_stack.append(path_to_pdb[ind][0]) 
+		   ind += 1
             # For each index in outlier_indices, check the corresponding decoded
             # contact matrix for low RMSD to native state.
-
-	     
+            print("PDB files left to investigate:", len(pdb_stack))
+            #if i == self.iterations:
+            #    if (len(pdb_stack) != 0):
+            #        self.iterations += 1
+            #        continue
+	#END for     
 	if not os.path.exists("./results/final_output"):
 	    os.mkdir("./results/final_output")
-	   
-            
+	
+	# Paint with RMSD to native state
+        rmsd_values = []
+        for i in range(1, self.iterations + 1):
+	    for j in range(1, self.sim_num + 1):   
+            	for k in range(1, self.sim_steps/self.traj_out_freq + 1):
+		    path = "./results/iteration_rl_%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i, i, j, k) 
+	            u = mdanal.Universe(path)
+                    R = RMSD(u, self.native_protein)
+                    R.run()
+                    rmsd_values.append(R.rmsd[0,2])
+	#rmsd_array = np.array(rmsd_values)
+		
+     
 	all_encoded_data = np.array(scatter_data[:])
 	all_encoded_data = np.reshape(all_encoded_data, (all_encoded_data.shape[0] * all_encoded_data.shape[1], all_encoded_data.shape[-1]))
 	np.save("./results/final_output/all_encoded_data.npy", all_encoded_data)
@@ -269,7 +320,34 @@ class RL(object):
         print(Counter(db.labels_))
         colors = db.labels_
         scatter_plot(all_encoded_data, 'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples), "./results/final_output/clusters.png", color=colors)
-
+         
+	# RMSD to native state plot
+	print("rmsd_values len:", len(rmsd_values))
+        [n,s] = np.histogram(rmsd_values, 11)
+        d = np.digitize(rmsd_values, s)
+	cmi = plt.get_cmap('jet')
+	cNorm = mpl.colors.Normalize(vmin=min(rmsd_values), vmax=max(rmsd_values))
+	scalarMap = mpl.cm.ScalarMappable(norm=cNorm, cmap=cmi)
+	fig = plt.figure()
+	ax = fig.add_subplot(111, projection='3d')
+	# scatter3D requires a 1D array for x, y, and z
+	# ravel() converts the 100x100 array into a 1x10000 array
+	p = ax.scatter3D(np.ravel(all_encoded_data[:, 0]),
+	                 np.ravel(all_encoded_data[:, 1]),
+	                 np.ravel(all_encoded_data[:, 2]),
+	                 marker='o', c=scalarMap.to_rgba(rmsd_values))
+	ax.set_xlim3d(np.amin(np.ravel(all_encoded_data[:, 0])), np.amax(np.ravel(all_encoded_data[:, 0])))
+	ax.set_ylim3d(np.amin(np.ravel(all_encoded_data[:, 1])), np.amax(np.ravel(all_encoded_data[:, 1])))
+	ax.set_zlim3d(np.amin(np.ravel(all_encoded_data[:, 2])), np.amax(np.ravel(all_encoded_data[:, 2])))
+	ax.set_xlabel('X')
+	ax.set_ylabel('Y')
+	ax.set_zlabel('Z')
+	scalarMap.set_array(rmsd_values)
+	fig.colorbar(scalarMap)
+	plt.savefig('./results/final_output/rmsd_native_clusters.png', dpi=600)
+	plt.clf()
+	
+	print("PDB files left to investigate:", len(pdb_stack))
 	    
 # Script for testing
 rl = RL(cvae_weights_path="../model_150.dms", iterations=2, sim_num=5)
