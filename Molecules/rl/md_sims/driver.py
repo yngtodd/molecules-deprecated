@@ -16,6 +16,10 @@ import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 from collections import Counter
 
+# For reward function
+import MDAnalysis as mdanal
+from MDAnalysis.analysis.rms import RMSD
+
 def scatter_plot(data, title, save_path, color='b'):
     """
     data : numpy array
@@ -68,10 +72,12 @@ class RL(object):
 	     self.initial_pdb = initial_pdb
         if native_pdb == None:
 	    # For testing purposes
-	    self.native_pdb = '/home/a05/data/fs-peptide/raw_MD_data/fs-peptide.pdb'
+	    native_pdb = '/home/a05/data/fs-peptide/raw_MD_data/fs-peptide.pdb'
 	else:
 	    self.native_pdb = native_pdb
 
+	self.native_protein = mdanal.Universe(native_pdb)
+	#self.native_protein = native_u.select_atoms('protein')	
   	self.iterations = iterations
 	self.sim_num = sim_num
         self.sim_steps = sim_steps
@@ -86,7 +92,7 @@ class RL(object):
 	if not os.path.exists("./results"):
             os.mkdir("./results", 0755)
     
-    def run_simulation(self, path, out_pdb_file, out_dcd_file, pdb_in=None, initial_rl_loop=False, ff='amber14-all.xml', water_model='amber14/tip3pfb.xml'):
+    def run_simulation(self, path, out_dcd_file, pdb_in=None, initial_rl_loop=False, ff='amber14-all.xml', water_model='amber14/tip3pfb.xml'):
         if not os.path.exists(path):
 	    raise Exception("Path: " + str(path) + " does not exist!")
        
@@ -114,13 +120,26 @@ class RL(object):
         #print "Set positions"
 	simulation.minimizeEnergy()
 	#print "Minimize energy"
-	simulation.reporters.append(PDBReporter(path + out_pdb_file, self.sim_steps))
+	#simulation.reporters.append(PDBReporter(path + out_pdb_file, self.sim_steps))
 	simulation.reporters.append(DCDReporter(path + out_dcd_file, self.traj_out_freq))
+	for i in range(self.sim_steps/self.traj_out_freq):
+	    simulation.reporters.append(PDBReporter(path + "pdb_data/output-%i.pdb" % (i + 1), self.traj_out_freq))
+	    simulation.step(self.traj_out_freq)
+	    simulation.reporters.pop()
+
+	fin = open(path + "pdb_data/output-%i.pdb" % (self.sim_steps/self.traj_out_freq))
+	final_pdb_data = fin.read()
+	fin.close()
+	fout = open(path + "/output.pdb", 'w')
+	fout.write(final_pdb_data)
+	fout.close()
+
+	
 	#print "PDB report"
 	#simulation.reporters.append(StateDataReporter(stdout, 100, step=True,
 	#        potentialEnergy=True, temperature=True))
 	#print "State data report"
-	simulation.step(self.sim_steps)
+	#simulation.step(self.sim_steps)
 	#print "Define steps"
 
     def execute(self):
@@ -129,6 +148,8 @@ class RL(object):
 	scatter_data = []
 	d_eps = 0.1
 	d_min_samples = 10
+	# Naive rmsd threshold
+	rmsd_threshold = 5.0
 	# Put DCD reporter in a loop and put only a fixed number (10000) frames
 	# in each output-i.dcd file. Where i ranges from (1,n).
 	for i in range(1, self.iterations + 1):
@@ -141,14 +162,15 @@ class RL(object):
 		if not os.path.exists(path_1):
                     os.mkdir(path_1, 0755)
 		    os.mkdir(path_1 + "/cluster", 0755)
+		    os.mkdir(path_1 + "/pdb_data", 0755)
 		# TODO: Optimize so that the simulation jobs are split over
 		#       the available GPU nodes. May be possible with python
 		#	subprocess. It would be a good idea to pull 
 		#	self.run_simulation(path_1) out of the inner for loop
 		if i == 1:
-		    self.run_simulation(path_1, pdb_file, dcd_file, initial_rl_loop = True)
+		    self.run_simulation(path_1, dcd_file, initial_rl_loop = True)
 		else:
-		    self.run_simulation(path_1, pdb_file, dcd_file)
+		    self.run_simulation(path_1, dcd_file)
 	   
 	    # Calculate contact matrix .array and .dat files for each simulation
 	    # run. Files are place in native-contact/data inside each simulation
@@ -189,11 +211,27 @@ class RL(object):
 	        # Evaluate reward function
 	        # Kill some models and spawn new ones
 	
-	    int_encoded_data = np.array(scatter_data[:])
+	    int_encoded_data = np.array(scatter_data[self.sim_steps*(i - 1):])
             int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
-	    db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(all_encoded_data)
+	    db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
             # Get indices of outliers
             outlier_indices = get_cluster_indices(db.labels_)
+	    accept_sims = []
+	    for ind in outlier_indices:
+		sim_ind = ind/(self.sim_steps/self.traj_out_freq)
+		pdb_ind = ind % (self.sim_steps/self.traj_out_freq)
+		path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i,i,sim_ind, (pdb_ind + 1))
+		u = mdanal.Universe(path_1)
+		R = RMSD(u, self.native_protein)
+		#rmsd_value = rmsd(self.native_protein, u.select_atoms('protein'), center=True)
+		R.run()
+		rmsd_value = R.rmsd[0,2]
+		if rmsd_value < rmsd_threshold:
+		    # Start next rl iteration with this pdb path_1
+		    print("RMSD threshold:", rmsd_threshold)
+		    print("RMSD to native contact for outlier at index %i :" % ind, rmsd_value)
+		    pass
+		
             # For each index in outlier_indices, check the corresponding decoded
             # contact matrix for low RMSD to native state.
 

@@ -63,9 +63,9 @@ class ExtractNativeContact(object):
 
 	# create directories for results;
 	#self.path_0 = self.data_path + "results/";
-	self.path_1 = self.data_path + "native-contact/";
-	self.path_2 = self.path_1 + "raw/";
-	self.path_3 = self.path_1 + "data/";
+	self.path_1 = self.data_path + "native-contact/"
+	self.path_2 = self.path_1 + "raw/"
+	self.path_3 = self.path_1 + "data/"
 
     def build_directories(self):  
 	# creating directories for results;
