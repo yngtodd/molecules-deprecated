@@ -222,6 +222,9 @@ class RL(object):
 			print("Using spawn PDB.")
 		    else:
 		    	self.run_simulation(path_1, dcd_file, pdb_in=pdb_stack[-1])
+			if len(pdb_stack) == 1:
+			    spawn_pdb = pdb_stack[-1]
+			    rmsd_threshold += 0.5
 		    	pdb_stack.pop()
 	   
 	    # Calculate contact matrix .array and .dat files for each simulation
@@ -352,6 +355,7 @@ class RL(object):
             #    if (len(pdb_stack) != 0):
             #        self.iterations += 1
             #        continue
+	    rmsd_threshold -= 0.75
 	#END for     
 	
 	
@@ -429,5 +433,5 @@ class RL(object):
 	print("PDB files left to investigate:", len(pdb_stack))
 	    
 # Script for testing
-rl = RL(cvae_weights_path="../model_150.dms", iterations=2, sim_num=5)
+rl = RL(cvae_weights_path="../model_150.dms", iterations=5, sim_num=5)
 rl.execute()
