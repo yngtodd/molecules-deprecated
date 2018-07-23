@@ -26,6 +26,37 @@ import MDAnalysis as mdanal
 from MDAnalysis.analysis.rms import RMSD
 from scipy import stats
 
+def scatter_plot_rmsd(data, title, save_path, rmsd_values, vmin=None, vmax=None):
+    [n,s] = np.histogram(rmsd_values, 11)
+    d = np.digitize(rmsd_values, s)
+    cmi = plt.get_cmap('jet')
+    if vmin == None and vmax == None:
+    	cNorm = mpl.colors.Normalize(vmin=min(rmsd_values), vmax=max(rmsd_values))
+    else:
+	cNorm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+    scalarMap = mpl.cm.ScalarMappable(norm=cNorm, cmap=cmi)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    # scatter3D requires a 1D array for x, y, and z
+    # ravel() converts the 100x100 array into a 1x10000 array
+    p = ax.scatter3D(np.ravel(data[:, 0]),
+                     np.ravel(data[:, 1]),
+                     np.ravel(data[:, 2]),
+                     marker='o', c=scalarMap.to_rgba(rmsd_values))
+    ax.set_xlim3d(np.amin(np.ravel(data[:, 0])), np.amax(np.ravel(data[:, 0])))
+    ax.set_ylim3d(np.amin(np.ravel(data[:, 1])), np.amax(np.ravel(data[:, 1])))
+    ax.set_zlim3d(np.amin(np.ravel(data[:, 2])), np.amax(np.ravel(data[:, 2])))
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    scalarMap.set_array(rmsd_values)
+    fig.colorbar(scalarMap)
+    plt.title(title)
+    plt.savefig(save_path, dpi=600)
+    #plt.clf()
+    plt.cla()
+    plt.close(fig)
+
 def scatter_plot(data, title, save_path, color='b'):
     """
     data : numpy array
@@ -99,6 +130,10 @@ class RL(object):
 
 	if not os.path.exists("./results"):
             os.mkdir("./results", 0755)
+	if not os.path.exists("./results/final_output"):
+            os.mkdir("./results/final_output")
+	if not os.path.exists("./results/final_output/intermediate_data"):
+            os.mkdir("./results/final_output/intermediate_data")
     
     def run_simulation(self, path, out_dcd_file, pdb_in=None, initial_rl_loop=False, ff='amber14-all.xml', water_model='amber14/tip3pfb.xml'):
         if not os.path.exists(path):
@@ -221,27 +256,54 @@ class RL(object):
 		print('Estimated number of clusters: %d' % n_clusters_)
 		print(Counter(db.labels_))
 		colors = db.labels_
-		scatter_plot(encoded_data, 'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples), path_1+"/cluster/clusters.png", color=colors)
+		scatter_plot(encoded_data, 
+			     'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples), 
+			     path_1 + "/cluster/clusters.png", 
+			     color=colors)
 		    
 	        # Generate contact matrix
 	        # Pass CM's to CVAE
 	        # Evaluate reward function
 	        # Kill some models and spawn new ones
+	    #print("scatter_data len:", len(scatter_data))
+            #int_encoded_data = []
+            #for dataset in scatter_data[(len(scatter_data) - self.sim_num):]:
+            #    int_encoded_data.append(dataset)
+            #int_encoded_data = np.array(scatter_data[self.sim_steps*(i - 1):])
+            #int_encoded_data = np.array(int_encoded_data)
+            #print("int_encoded_data shape:",int_encoded_data.shape)
+            #int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
+            #db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
+            #np.save("./results/final_output/intermediate_data/int_encoded_data_%i.npy" % i, int_encoded_data)
 	    print("scatter_data len:", len(scatter_data))
 	    int_encoded_data = []
-	    for dataset in scatter_data[(len(scatter_data) - self.sim_num):]:
+	    for dataset in scatter_data:
 		int_encoded_data.append(dataset)
 	    #int_encoded_data = np.array(scatter_data[self.sim_steps*(i - 1):])
             int_encoded_data = np.array(int_encoded_data)
 	    print("int_encoded_data shape:",int_encoded_data.shape)
 	    int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
 	    db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
+            np.save("./results/final_output/intermediate_data/int_encoded_data_%i.npy" % i, int_encoded_data)
+            #scatter_plot_rmsd(int_encoded_data, 
+	    #	               "Intermediate Latent Space (RL loop: %i, MD Sim: %i " % (i,j), 
+	    #	               "./results/iteration_rl_%i/sim_%i_%i/cluster/cluster_rmsd.png" % (i,i,j),
+	    #	               rmsd_values=rmsd_values) 	    
             # Get indices of outliers
+	    print("scatter_data len:", len(scatter_data))
+            int_encoded_data = []
+            for dataset in scatter_data[(len(scatter_data) - self.sim_num):]:
+                int_encoded_data.append(dataset)
+            #int_encoded_data = np.array(scatter_data[self.sim_steps*(i - 1):])
+            int_encoded_data = np.array(int_encoded_data)
+            print("int_encoded_data shape:",int_encoded_data.shape)
+            int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
+            db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
             outlier_indices = get_cluster_indices(db.labels_)
 	    accept_sims = []
 	    for ind in outlier_indices:
 		sim_ind = ind/(self.sim_steps/self.traj_out_freq) + 1
-		pdb_ind = ind % (self.sim_steps/self.traj_out_freq) + 1
+		pdb_ind = ind % (self.sim_steps/self.traj_out_freq) + 1 
 		path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i, i, sim_ind, pdb_ind)
 		u = mdanal.Universe(path_1)
 		R = RMSD(u, self.native_protein)
@@ -280,7 +342,7 @@ class RL(object):
 		for zscore in rmsd_zscores:
 		   # z-score of -3 marks outlier for a normal distribution.
 		   if zscore <= -3:
-			print("RMSD to native contact for clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_value)
+			print("RMSD to native contact for clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values[ind])
 			pdb_stack.append(path_to_pdb[ind][0]) 
 		   ind += 1
             # For each index in outlier_indices, check the corresponding decoded
@@ -291,8 +353,7 @@ class RL(object):
             #        self.iterations += 1
             #        continue
 	#END for     
-	if not os.path.exists("./results/final_output"):
-	    os.mkdir("./results/final_output")
+	
 	
 	# Paint with RMSD to native state
         rmsd_values = []
@@ -319,33 +380,51 @@ class RL(object):
         print('Estimated number of clusters: %d' % n_clusters_)
         print(Counter(db.labels_))
         colors = db.labels_
-        scatter_plot(all_encoded_data, 'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples), "./results/final_output/clusters.png", color=colors)
+        scatter_plot(all_encoded_data, 
+		     'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples),
+		     "./results/final_output/clusters.png", color=colors)
          
 	# RMSD to native state plot
-	print("rmsd_values len:", len(rmsd_values))
-        [n,s] = np.histogram(rmsd_values, 11)
-        d = np.digitize(rmsd_values, s)
-	cmi = plt.get_cmap('jet')
-	cNorm = mpl.colors.Normalize(vmin=min(rmsd_values), vmax=max(rmsd_values))
-	scalarMap = mpl.cm.ScalarMappable(norm=cNorm, cmap=cmi)
-	fig = plt.figure()
-	ax = fig.add_subplot(111, projection='3d')
+	scatter_plot_rmsd(all_encoded_data, 
+			  "Final Latent Space", 
+			  './results/final_output/rmsd_native_clusters.png',
+			  rmsd_values)	
+	for i in range(1, self.iterations + 1):
+            path = "./results/final_output/intermediate_data/"
+            int_encoded_data = np.load(path + "int_encoded_data_%i.npy" % i)
+	    int_rmsd_data = rmsd_values[:self.sim_num*(self.sim_steps/self.traj_out_freq)*i]
+	    print("int_encoded_data:", len(int_encoded_data))
+	    print("int_rmsd_data:", len(int_rmsd_data))
+	    scatter_plot_rmsd(int_encoded_data,
+                              "Intermediate Latent Space (RL loop: %i)" % i,
+                               path + "int_cluster_rmsd_%i.png" % i,
+                               rmsd_values=int_rmsd_data,
+			       vmin=min(rmsd_values),
+			       vmax=max(rmsd_values))
+	#[n,s] = np.histogram(rmsd_values, 11)
+        #d = np.digitize(rmsd_values, s)
+	#cmi = plt.get_cmap('jet')
+	#cNorm = mpl.colors.Normalize(vmin=min(rmsd_values), vmax=max(rmsd_values))
+	#scalarMap = mpl.cm.ScalarMappable(norm=cNorm, cmap=cmi)
+	#fig = plt.figure()
+	#ax = fig.add_subplot(111, projection='3d')
 	# scatter3D requires a 1D array for x, y, and z
 	# ravel() converts the 100x100 array into a 1x10000 array
-	p = ax.scatter3D(np.ravel(all_encoded_data[:, 0]),
-	                 np.ravel(all_encoded_data[:, 1]),
-	                 np.ravel(all_encoded_data[:, 2]),
-	                 marker='o', c=scalarMap.to_rgba(rmsd_values))
-	ax.set_xlim3d(np.amin(np.ravel(all_encoded_data[:, 0])), np.amax(np.ravel(all_encoded_data[:, 0])))
-	ax.set_ylim3d(np.amin(np.ravel(all_encoded_data[:, 1])), np.amax(np.ravel(all_encoded_data[:, 1])))
-	ax.set_zlim3d(np.amin(np.ravel(all_encoded_data[:, 2])), np.amax(np.ravel(all_encoded_data[:, 2])))
-	ax.set_xlabel('X')
-	ax.set_ylabel('Y')
-	ax.set_zlabel('Z')
-	scalarMap.set_array(rmsd_values)
-	fig.colorbar(scalarMap)
-	plt.savefig('./results/final_output/rmsd_native_clusters.png', dpi=600)
-	plt.clf()
+	#p = ax.scatter3D(np.ravel(all_encoded_data[:, 0]),
+	 #                np.ravel(all_encoded_data[:, 1]),
+	  #               np.ravel(all_encoded_data[:, 2]),
+	   #              marker='o', c=scalarMap.to_rgba(rmsd_values))
+	#ax.set_xlim3d(np.amin(np.ravel(all_encoded_data[:, 0])), np.amax(np.ravel(all_encoded_data[:, 0])))
+	#ax.set_ylim3d(np.amin(np.ravel(all_encoded_data[:, 1])), np.amax(np.ravel(all_encoded_data[:, 1])))
+	#ax.set_zlim3d(np.amin(np.ravel(all_encoded_data[:, 2])), np.amax(np.ravel(all_encoded_data[:, 2])))
+	#ax.set_xlabel('X')
+	#ax.set_ylabel('Y')
+	#ax.set_zlabel('Z')
+	#scalarMap.set_array(rmsd_values)
+	#fig.colorbar(scalarMap)
+	#plt.title("Latent Space Colored with RMSD to Native State")
+	#plt.savefig('./results/final_output/rmsd_native_clusters.png', dpi=600)
+	#plt.clf()
 	
 	print("PDB files left to investigate:", len(pdb_stack))
 	    
