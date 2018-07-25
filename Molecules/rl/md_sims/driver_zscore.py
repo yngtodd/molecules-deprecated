@@ -224,7 +224,7 @@ class RL(object):
 		    	self.run_simulation(path_1, dcd_file, pdb_in=pdb_stack[-1])
 			if len(pdb_stack) == 1:
 			    spawn_pdb = pdb_stack[-1]
-			    rmsd_threshold += 0.5
+			    rmsd_threshold += 0.50
 		    	pdb_stack.pop()
 	   
 	    # Calculate contact matrix .array and .dat files for each simulation
@@ -355,7 +355,7 @@ class RL(object):
             #    if (len(pdb_stack) != 0):
             #        self.iterations += 1
             #        continue
-	    rmsd_threshold -= 0.75
+	    rmsd_threshold -= 0.40
 	#END for     
 	
 	
@@ -399,8 +399,17 @@ class RL(object):
 	    int_rmsd_data = rmsd_values[:self.sim_num*(self.sim_steps/self.traj_out_freq)*i]
 	    print("int_encoded_data:", len(int_encoded_data))
 	    print("int_rmsd_data:", len(int_rmsd_data))
+	    db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
+            n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
+            print('Estimated number of clusters: %d' % n_clusters_)
+            print(Counter(db.labels_))
+            colors = db.labels_
+	    scatter_plot(int_encoded_data,
+                         'Intermediate Latent Space (Number of Clusters: %d, RL Loop: %i)' % (n_clusters_, i),
+                         path + "int_clusters_%i.png" % i, 
+			 color=colors)
 	    scatter_plot_rmsd(int_encoded_data,
-                              "Intermediate Latent Space (RL loop: %i)" % i,
+                              "Intermediate Latent Space (RL Loop: %i)" % i,
                                path + "int_cluster_rmsd_%i.png" % i,
                                rmsd_values=int_rmsd_data,
 			       vmin=min(rmsd_values),
@@ -433,5 +442,5 @@ class RL(object):
 	print("PDB files left to investigate:", len(pdb_stack))
 	    
 # Script for testing
-rl = RL(cvae_weights_path="../model_150.dms", iterations=5, sim_num=5)
+rl = RL(cvae_weights_path="../model_150.dms", iterations=15, sim_num=5)
 rl.execute()
