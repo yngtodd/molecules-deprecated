@@ -37,8 +37,6 @@ def scatter_plot_rmsd(data, title, save_path, rmsd_values, vmin=None, vmax=None)
     scalarMap = mpl.cm.ScalarMappable(norm=cNorm, cmap=cmi)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    # scatter3D requires a 1D array for x, y, and z
-    # ravel() converts the 100x100 array into a 1x10000 array
     p = ax.scatter3D(np.ravel(data[:, 0]),
                      np.ravel(data[:, 1]),
                      np.ravel(data[:, 2]),
@@ -53,7 +51,6 @@ def scatter_plot_rmsd(data, title, save_path, rmsd_values, vmin=None, vmax=None)
     fig.colorbar(scalarMap)
     plt.title(title)
     plt.savefig(save_path, dpi=600)
-    #plt.clf()
     plt.cla()
     plt.close(fig)
 
@@ -80,7 +77,6 @@ def scatter_plot(data, title, save_path, color='b'):
     ax.set_zlim(np.amin(data[:, 2]), np.amax(data[:, 2]))
     ax.scatter(data[:, 0], data[:, 1], data[:, 2], c=color, marker='o')
     plt.savefig(save_path)
-    #plt.clf()
     plt.cla()
     plt.close(fig)
 
@@ -116,8 +112,7 @@ class RL(object):
 	    self.native_pdb = native_pdb
 
 	self.native_protein = mdanal.Universe(native_pdb)
-	#self.native_protein = native_u.select_atoms('protein')	
-  	self.iterations = iterations
+	self.iterations = iterations
 	self.sim_num = sim_num
         self.sim_steps = sim_steps
 	self.traj_out_freq = traj_out_freq
@@ -147,29 +142,23 @@ class RL(object):
 	else:
 	    pdb = PDBFile(pdb_in)
         
-	#print "Load PDB"
 	forcefield = ForceField(ff, water_model)
-	#print "Define force field"
-	# nonBondedeMethod=PME
-        system = forcefield.createSystem(pdb.topology, nonbondedMethod=NoCutoff,
-			      	             nonbondedCutoff=1.0*nanometer, constraints=HBonds)
-	#print "Define system"
+	system = forcefield.createSystem(pdb.topology, nonbondedMethod=NoCutoff,
+			      	         nonbondedCutoff=1.0*nanometer, constraints=HBonds)
 	integrator = LangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
-	#print "Define integrator"
 	simulation = Simulation(pdb.topology, system, integrator)
-	#print "Define simulation"
 	# Start back from output.pdb last frame
 	simulation.context.setPositions(pdb.positions)
-        #print "Set positions"
 	simulation.minimizeEnergy()
-	#print "Minimize energy"
-	#simulation.reporters.append(PDBReporter(path + out_pdb_file, self.sim_steps))
+	# Saves step every "traj_out_freq" to a DCD file. 
 	simulation.reporters.append(DCDReporter(path + out_dcd_file, self.traj_out_freq))
+	# For every step saved in the DCD we save a corresponding PDB file.
 	for i in range(self.sim_steps/self.traj_out_freq):
 	    simulation.reporters.append(PDBReporter(path + "pdb_data/output-%i.pdb" % (i + 1), self.traj_out_freq))
 	    simulation.step(self.traj_out_freq)
 	    simulation.reporters.pop()
 
+	# Writes the final PDB file to the same directory where the DCD file is saved.
 	fin = open(path + "pdb_data/output-%i.pdb" % (self.sim_steps/self.traj_out_freq))
 	final_pdb_data = fin.read()
 	fin.close()
@@ -177,33 +166,24 @@ class RL(object):
 	fout.write(final_pdb_data)
 	fout.close()
 
-	
-	#print "PDB report"
-	#simulation.reporters.append(StateDataReporter(stdout, 100, step=True,
-	#        potentialEnergy=True, temperature=True))
-	#print "State data report"
-	#simulation.step(self.sim_steps)
-	#print "Define steps"
-
     def execute(self):
 	pdb_file = 'output.pdb'
 	dcd_file = 'output-1.dcd'
-	scatter_data = []
+	total_data = []
 	pdb_stack = []
 	# spawn_pdb is a place holder to allow code to run.
-	# in the future it must be changed to an RL spwan.
+	# in the future it must be changed to an RL spwan or random PDB file.
 	spawn_pdb = self.initial_pdb[0]
+	# Parameters for DBSCAN clustering.
 	d_eps = 0.1
 	d_min_samples = 10
-	# Naive rmsd threshold
+	# Naive RMSD threshold.
 	rmsd_threshold = 5.0
-        # Put DCD reporter in a loop and put only a fixed number (10000) frames
-	# in each output-i.dcd file. Where i ranges from (1,n).
+
 	for i in range(1, self.iterations + 1):
 	    path = "./results/iteration_rl_"
 	    if not os.path.exists(path + "%i" % i):
             	os.mkdir(path + "%i" % i, 0755)
-	    #reward_data = np.array([])
 	    for j in range(1, self.sim_num + 1):
 		path_1 = path + "%i/sim_%i_%i/" % (i,i,j)
 		if not os.path.exists(path_1):
@@ -228,8 +208,9 @@ class RL(object):
 		    	pdb_stack.pop()
 	   
 	    # Calculate contact matrix .array and .dat files for each simulation
-	    # run. Files are place in native-contact/data inside each simulation
+	    # run. Files are placed in native-contact/data inside each simulation
 	    # directory.
+	    # TODO: Parallelize
 	    for j in range(1, self.sim_num + 1):
 		path_1 = path + "%i/sim_%i_%i/" % (i,i,j)
 		cm = ExtractNativeContact(path_1, pdb_file, dcd_file)
@@ -239,6 +220,7 @@ class RL(object):
             # Requires pre-trained CVAE.
 	    # TODO: compile CVAE outside of loop and pass in weights.
 	    # 	    then pass in cont-mat files on the fly and update the data.
+	    # TODO: Parallelize
 	    for j in range(1, self.sim_num + 1):
 		path_1 = path + "%i/sim_%i_%i/" % (i,i,j)
                 cvae = CVAE(path=path_1, sep_train=0, sep_test=0, sep_pred=1, f_traj=self.sim_steps/self.traj_out_freq)
@@ -247,42 +229,33 @@ class RL(object):
 		cvae.compile()
                 cvae.load_weights(self.cvae_weights_path)
                 encoded_data = cvae.encode_pred()
-
-		# Clustering
-                print("Encoded data shape:",encoded_data.shape)
+		
+                print("Encoded data shape:", encoded_data.shape)
+		# Save intermediate encoded_data
 		np.save(path_1 + "/cluster/encoded_data.npy", encoded_data)
-	 	scatter_data.append(encoded_data)
+	 	total_data.append(encoded_data)
+		# Plot encoded_data
 		scatter_plot(encoded_data, 'Latent Space :(Before Clustering)', path_1+"/cluster/scatter.png")	
+		
 		# Compute DBSCAN
         	db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(encoded_data)
         	n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
 		print('Estimated number of clusters: %d' % n_clusters_)
-		print(Counter(db.labels_))
+		print("DBSCAN clustering:", Counter(db.labels_))
 		colors = db.labels_
+		# Plot DBSCAN clustering of encoded_data
 		scatter_plot(encoded_data, 
 			     'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples), 
 			     path_1 + "/cluster/clusters.png", 
 			     color=colors)
 		    
-	        # Generate contact matrix
-	        # Pass CM's to CVAE
-	        # Evaluate reward function
-	        # Kill some models and spawn new ones
-	    #print("scatter_data len:", len(scatter_data))
-            #int_encoded_data = []
-            #for dataset in scatter_data[(len(scatter_data) - self.sim_num):]:
-            #    int_encoded_data.append(dataset)
-            #int_encoded_data = np.array(scatter_data[self.sim_steps*(i - 1):])
-            #int_encoded_data = np.array(int_encoded_data)
-            #print("int_encoded_data shape:",int_encoded_data.shape)
-            #int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
-            #db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
-            #np.save("./results/final_output/intermediate_data/int_encoded_data_%i.npy" % i, int_encoded_data)
-	    print("scatter_data len:", len(scatter_data))
+	    
+	    print("total_data len:", len(total_data))
+	    
 	    int_encoded_data = []
-	    for dataset in scatter_data:
+	    for dataset in total_data:
 		int_encoded_data.append(dataset)
-	    #int_encoded_data = np.array(scatter_data[self.sim_steps*(i - 1):])
+	    #int_encoded_data = np.array(total_data[self.sim_steps*(i - 1):])
             int_encoded_data = np.array(int_encoded_data)
 	    print("int_encoded_data shape:",int_encoded_data.shape)
 	    int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
@@ -293,11 +266,11 @@ class RL(object):
 	    #	               "./results/iteration_rl_%i/sim_%i_%i/cluster/cluster_rmsd.png" % (i,i,j),
 	    #	               rmsd_values=rmsd_values) 	    
             # Get indices of outliers
-	    print("scatter_data len:", len(scatter_data))
+	    print("total_data len:", len(total_data))
             int_encoded_data = []
-            for dataset in scatter_data[(len(scatter_data) - self.sim_num):]:
+            for dataset in total_data[(len(total_data) - self.sim_num):]:
                 int_encoded_data.append(dataset)
-            #int_encoded_data = np.array(scatter_data[self.sim_steps*(i - 1):])
+            #int_encoded_data = np.array(total_data[self.sim_steps*(i - 1):])
             int_encoded_data = np.array(int_encoded_data)
             print("int_encoded_data shape:",int_encoded_data.shape)
             int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
@@ -372,7 +345,7 @@ class RL(object):
 	#rmsd_array = np.array(rmsd_values)
 		
      
-	all_encoded_data = np.array(scatter_data[:])
+	all_encoded_data = np.array(total_data[:])
 	all_encoded_data = np.reshape(all_encoded_data, (all_encoded_data.shape[0] * all_encoded_data.shape[1], all_encoded_data.shape[-1]))
 	np.save("./results/final_output/all_encoded_data.npy", all_encoded_data)
 	print("Final encoded data shape:", all_encoded_data.shape)	
@@ -414,33 +387,9 @@ class RL(object):
                                rmsd_values=int_rmsd_data,
 			       vmin=min(rmsd_values),
 			       vmax=max(rmsd_values))
-	#[n,s] = np.histogram(rmsd_values, 11)
-        #d = np.digitize(rmsd_values, s)
-	#cmi = plt.get_cmap('jet')
-	#cNorm = mpl.colors.Normalize(vmin=min(rmsd_values), vmax=max(rmsd_values))
-	#scalarMap = mpl.cm.ScalarMappable(norm=cNorm, cmap=cmi)
-	#fig = plt.figure()
-	#ax = fig.add_subplot(111, projection='3d')
-	# scatter3D requires a 1D array for x, y, and z
-	# ravel() converts the 100x100 array into a 1x10000 array
-	#p = ax.scatter3D(np.ravel(all_encoded_data[:, 0]),
-	 #                np.ravel(all_encoded_data[:, 1]),
-	  #               np.ravel(all_encoded_data[:, 2]),
-	   #              marker='o', c=scalarMap.to_rgba(rmsd_values))
-	#ax.set_xlim3d(np.amin(np.ravel(all_encoded_data[:, 0])), np.amax(np.ravel(all_encoded_data[:, 0])))
-	#ax.set_ylim3d(np.amin(np.ravel(all_encoded_data[:, 1])), np.amax(np.ravel(all_encoded_data[:, 1])))
-	#ax.set_zlim3d(np.amin(np.ravel(all_encoded_data[:, 2])), np.amax(np.ravel(all_encoded_data[:, 2])))
-	#ax.set_xlabel('X')
-	#ax.set_ylabel('Y')
-	#ax.set_zlabel('Z')
-	#scalarMap.set_array(rmsd_values)
-	#fig.colorbar(scalarMap)
-	#plt.title("Latent Space Colored with RMSD to Native State")
-	#plt.savefig('./results/final_output/rmsd_native_clusters.png', dpi=600)
-	#plt.clf()
-	
+
 	print("PDB files left to investigate:", len(pdb_stack))
 	    
 # Script for testing
-rl = RL(cvae_weights_path="../model_150.dms", iterations=15, sim_num=5)
+rl = RL(cvae_weights_path="../model_150.dms", iterations=3, sim_num=5)
 rl.execute()
