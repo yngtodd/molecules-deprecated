@@ -26,6 +26,14 @@ import MDAnalysis as mdanal
 from MDAnalysis.analysis.rms import RMSD
 from scipy import stats
 
+def get_intermediate_data(dir_path, num):
+    data = []
+    for i in range(num):
+	data.append(np.load(dir_path + "int_encoded_data_%i.npy"))
+    data = np.array(data)
+    np.reshape(data, (data.shape[0] * data.shape[1], data.shape[-1]))
+    return data
+
 def scatter_plot_rmsd(data, title, save_path, rmsd_values, vmin=None, vmax=None):
     [n,s] = np.histogram(rmsd_values, 11)
     d = np.digitize(rmsd_values, s)
@@ -87,11 +95,11 @@ def get_cluster_indices(labels, cluster=-1):
 	cluster label whose in dices are desired. 
 	cluster=-1 default automatically selects outliers. 
     """
-    outlier_indices = []
+    indices = []
     for i,j in enumerate(labels):
         if j == cluster:
-            outlier_indices.append(i)
-    return outlier_indices
+            indices.append(i)
+    return indices
 
 class RL(object):
 
@@ -154,12 +162,12 @@ class RL(object):
 	simulation.reporters.append(DCDReporter(path + out_dcd_file, self.traj_out_freq))
 	# For every step saved in the DCD we save a corresponding PDB file.
 	for i in range(self.sim_steps/self.traj_out_freq):
-	    simulation.reporters.append(PDBReporter(path + "pdb_data/output-%i.pdb" % (i + 1), self.traj_out_freq))
+	    simulation.reporters.append(PDBReporter(path + "pdb_data/output-%i.pdb" % i, self.traj_out_freq))
 	    simulation.step(self.traj_out_freq)
 	    simulation.reporters.pop()
 
 	# Writes the final PDB file to the same directory where the DCD file is saved.
-	fin = open(path + "pdb_data/output-%i.pdb" % (self.sim_steps/self.traj_out_freq))
+	fin = open(path + "pdb_data/output-%i.pdb" % (self.sim_steps/self.traj_out_freq - 1))
 	final_pdb_data = fin.read()
 	fin.close()
 	fout = open(path + "/output.pdb", 'w')
@@ -169,7 +177,6 @@ class RL(object):
     def execute(self):
 	pdb_file = 'output.pdb'
 	dcd_file = 'output-1.dcd'
-	total_data = []
 	pdb_stack = []
 	# spawn_pdb is a place holder to allow code to run.
 	# in the future it must be changed to an RL spwan or random PDB file.
@@ -180,11 +187,11 @@ class RL(object):
 	# Naive RMSD threshold.
 	rmsd_threshold = 5.0
 
-	for i in range(1, self.iterations + 1):
+	for i in range(0, self.iterations):
 	    path = "./results/iteration_rl_"
 	    if not os.path.exists(path + "%i" % i):
             	os.mkdir(path + "%i" % i, 0755)
-	    for j in range(1, self.sim_num + 1):
+	    for j in range(0, self.sim_num):
 		path_1 = path + "%i/sim_%i_%i/" % (i,i,j)
 		if not os.path.exists(path_1):
                     os.mkdir(path_1, 0755)
@@ -194,7 +201,7 @@ class RL(object):
 		#       the available GPU nodes. May be possible with python
 		#	subprocess. It would be a good idea to pull 
 		#	self.run_simulation(path_1) out of the inner for loop
-		if i == 1:
+		if i == 0:
 		    self.run_simulation(path_1, dcd_file, initial_rl_loop = True)
 		else:
 		    if len(pdb_stack) == 0:
@@ -211,7 +218,7 @@ class RL(object):
 	    # run. Files are placed in native-contact/data inside each simulation
 	    # directory.
 	    # TODO: Parallelize
-	    for j in range(1, self.sim_num + 1):
+	    for j in range(0, self.sim_num):
 		path_1 = path + "%i/sim_%i_%i/" % (i,i,j)
 		cm = ExtractNativeContact(path_1, pdb_file, dcd_file)
 		cm.generate_contact_matrix()
@@ -221,7 +228,8 @@ class RL(object):
 	    # TODO: compile CVAE outside of loop and pass in weights.
 	    # 	    then pass in cont-mat files on the fly and update the data.
 	    # TODO: Parallelize
-	    for j in range(1, self.sim_num + 1):
+	    total_data = []
+	    for j in range(0, self.sim_num):
 		path_1 = path + "%i/sim_%i_%i/" % (i,i,j)
                 cvae = CVAE(path=path_1, sep_train=0, sep_test=0, sep_pred=1, f_traj=self.sim_steps/self.traj_out_freq)
                 cvae.load_contact_matrix(path_1 + "native-contact/data/cont-mat.dat",
@@ -231,105 +239,98 @@ class RL(object):
                 encoded_data = cvae.encode_pred()
 		
                 print("Encoded data shape:", encoded_data.shape)
-		# Save intermediate encoded_data
-		np.save(path_1 + "/cluster/encoded_data.npy", encoded_data)
+		# Save intermediate encoded_data (Make parser to get this data from the total_data saved file)
+		#np.save(path_1 + "/cluster/encoded_data.npy", encoded_data)
 	 	total_data.append(encoded_data)
 		# Plot encoded_data
-		scatter_plot(encoded_data, 'Latent Space :(Before Clustering)', path_1+"/cluster/scatter.png")	
+		#scatter_plot(encoded_data, 'Latent Space :(Before Clustering)', path_1+"/cluster/scatter.png")	
 		
-		# Compute DBSCAN
-        	db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(encoded_data)
-        	n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
-		print('Estimated number of clusters: %d' % n_clusters_)
-		print("DBSCAN clustering:", Counter(db.labels_))
-		colors = db.labels_
-		# Plot DBSCAN clustering of encoded_data
-		scatter_plot(encoded_data, 
-			     'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples), 
-			     path_1 + "/cluster/clusters.png", 
-			     color=colors)
+		# Compute DBSCAN (Move to optional function at end)
+        	#db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(encoded_data)
+        	#n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
+		#print('Estimated number of clusters: %d' % n_clusters_)
+		#print("DBSCAN clustering:", Counter(db.labels_))
+		#colors = db.labels_
+		# Plot DBSCAN clustering of encoded_data (Move to optional function at end)
+		#scatter_plot(encoded_data, 
+		#	     'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples), 
+		#	     path_1 + "/cluster/clusters.png", 
+		#	     color=colors)
 		    
 	    
 	    print("total_data len:", len(total_data))
-	    
-	    int_encoded_data = []
-	    for dataset in total_data:
-		int_encoded_data.append(dataset)
-            int_encoded_data = np.array(int_encoded_data)
-	    print("int_encoded_data shape:",int_encoded_data.shape)
-	    int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
-	    print(int_encoded_data)
-	    print("int_encoded_data shape:",int_encoded_data.shape)
-	    db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
-            np.save("./results/final_output/intermediate_data/int_encoded_data_%i.npy" % i, int_encoded_data)
-            scatter_plot_rmsd(int_encoded_data, 
-	    	               "Intermediate Latent Space (RL loop: %i, MD Sim: %i " % (i,j), 
-	    	               "./results/iteration_rl_%i/sim_%i_%i/cluster/cluster_rmsd.png" % (i,i,j),
-	    	               rmsd_values=rmsd_values) 	    
+	    total_data = np.array(total_data)
+	    total_data = np.reshape(total_data, (total_data.shape[0] * total_data.shape[1], total_data.shape[-1]))
+	    print("total_data shape:", total_data.shape)
+	    np.save("./results/final_output/intermediate_data/encoded_data_rl_%i.npy" % i, np.array(total_data))
+	     
+	    #int_encoded_data = []
+	    #for dataset in total_data:
+		#int_encoded_data.append(dataset)
+            #int_encoded_data = np.array(int_encoded_data)
+	    #print("int_encoded_data shape:",int_encoded_data.shape)
+	    #int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
+	    #print(int_encoded_data)
+	    #print("int_encoded_data shape:",int_encoded_data.shape)
+	    #db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
+            #np.save("./results/final_output/intermediate_data/int_encoded_data_%i.npy" % i, int_encoded_data)
             
-	    # Get indices of outliers
-	    outlier_indices = get_cluster_indices(db.labels_)
-	    accept_sims = []
-	    for ind in outlier_indices:
-		sim_ind = ind/(self.sim_steps/self.traj_out_freq) + 1
-		pdb_ind = ind % (self.sim_steps/self.traj_out_freq) + 1 
-		path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i, i, sim_ind, pdb_ind)
-		u = mdanal.Universe(path_1)
-		R = RMSD(u, self.native_protein)
-		#rmsd_value = rmsd(self.native_protein, u.select_atoms('protein'), center=True)
-		R.run()
-		rmsd_value = R.rmsd[0,2]
-		if rmsd_value < rmsd_threshold:
-		    # Start next rl iteration with this pdb path_1
-		    print("RMSD threshold:", rmsd_threshold)
-		    print("RMSD to native contact for outlier at index %i :" % ind, rmsd_value)
-		    pdb_stack.append(path_1)
-		    # Queue pdb files to start new round of simulations.
+	    db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(total_data)
 	    for cluster in Counter(db.labels_):
 		print(Counter(db.labels_))
 		print("Current cluster:", cluster)
-		if cluster == -1:
-		    continue
 	        indices = get_cluster_indices(labels=db.labels_, cluster=cluster)
 		print("indices length:", len(indices))
 		rmsd_values = []
 		path_to_pdb = []
+		print(indices)
 	        for ind in indices:
-		    sim_ind = ind/(self.sim_steps/self.traj_out_freq) + 1
-                    pdb_ind = ind % (self.sim_steps/self.traj_out_freq) + 1
-                    path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i,i,sim_ind, pdb_ind)
+	            ind %= self.sim_num*(self.sim_steps/self.traj_out_freq)
+		    sim_ind = ind / (self.sim_steps/self.traj_out_freq)
+                    pdb_ind = ind % (self.sim_steps/self.traj_out_freq)
+                    path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i, i, sim_ind, pdb_ind)
                     u = mdanal.Universe(path_1)
                     R = RMSD(u, self.native_protein)
 		    R.run()
-                    rmsd_values.append(R.rmsd[0,2])
-		    path_to_pdb.append((path_1, pdb_ind + 1))
-		rmsd_array = np.array(rmsd_values)
-		rmsd_zscores = stats.zscore(rmsd_array)
-		ind = 0
-		print("rmsd_values:", rmsd_array.shape)
-		print("rmsd_zscores:", rmsd_zscores.shape)
-		for zscore in rmsd_zscores:
-		   # z-score of -3 marks outlier for a normal distribution.
-		   if zscore <= -3:
-			print("RMSD to native contact for clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values[ind])
-			pdb_stack.append(path_to_pdb[ind][0]) 
-		   ind += 1
-            # For each index in outlier_indices, check the corresponding decoded
-            # contact matrix for low RMSD to native state.
+		    # For DBSCAN outliers
+		    if cluster == -1:
+			rmsd_value = R.rmsd[0,2]
+                        if rmsd_value < rmsd_threshold:
+                            # Start next rl iteration with this pdb path_1
+                            print("RMSD threshold:", rmsd_threshold)
+                            print("RMSD to native contact for outlier at index %i :" % ind, rmsd_value)
+                            pdb_stack.append(path_1)
+		    # For RMSD outliers within DBSCAN clusters
+		    else:
+                    	rmsd_values.append(R.rmsd[0,2])
+		    	path_to_pdb.append((path_1, pdb_ind))
+		# For RMSD outliers within DBSCAN clusters
+		if cluster != -1:
+		    rmsd_array = np.array(rmsd_values)
+		    rmsd_zscores = stats.zscore(rmsd_array)
+		    print("rmsd_values:", rmsd_array.shape)
+		    print("rmsd_zscores:", rmsd_zscores.shape)
+		    ind = 0
+		    for zscore in rmsd_zscores:
+		        # z-score of -3 marks outlier for a normal distribution.
+			# Assuming Normal Distribution of RMSD values because 
+			# CVAE yields normally distributed clusters.
+		        if zscore <= -3:
+			    print("RMSD to native contact for clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values[ind])
+			    pdb_stack.append(path_to_pdb[ind][0]) 
+		        ind += 1
+       
             print("PDB files left to investigate:", len(pdb_stack))
-            #if i == self.iterations:
-            #    if (len(pdb_stack) != 0):
-            #        self.iterations += 1
-            #        continue
+	    # Base line for RL
 	    rmsd_threshold -= 0.40
 	#END for     
 	
 	
 	# Paint with RMSD to native state
         rmsd_values = []
-        for i in range(1, self.iterations + 1):
-	    for j in range(1, self.sim_num + 1):   
-            	for k in range(1, self.sim_steps/self.traj_out_freq + 1):
+        for i in range(0, self.iterations):
+	    for j in range(0, self.sim_num):   
+            	for k in range(0, self.sim_steps/self.traj_out_freq):
 		    path = "./results/iteration_rl_%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i, i, j, k) 
 	            u = mdanal.Universe(path)
                     R = RMSD(u, self.native_protein)
@@ -359,10 +360,11 @@ class RL(object):
 			  "Final Latent Space", 
 			  './results/final_output/rmsd_native_clusters.png',
 			  rmsd_values)	
-	for i in range(1, self.iterations + 1):
+	for i in range(0, self.iterations):
             path = "./results/final_output/intermediate_data/"
+	    # TODO: Make function to concatenate multiple intermediate data files.
             int_encoded_data = np.load(path + "int_encoded_data_%i.npy" % i)
-	    int_rmsd_data = rmsd_values[:self.sim_num*(self.sim_steps/self.traj_out_freq)*i]
+	    int_rmsd_data = rmsd_values[:self.sim_num*(self.sim_steps/self.traj_out_freq)*(i + 1)]
 	    print("int_encoded_data:", len(int_encoded_data))
 	    print("int_rmsd_data:", len(int_rmsd_data))
 	    db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)

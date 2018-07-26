@@ -32,6 +32,7 @@ torch.manual_seed(args.seed)
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
+	input_dim = -1 # Place holder
         self.affine1 = nn.Linear(4, 128)
         self.affine2 = nn.Linear(128, 2)
 
