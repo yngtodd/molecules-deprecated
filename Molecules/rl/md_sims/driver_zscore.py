@@ -255,27 +255,20 @@ class RL(object):
 	    int_encoded_data = []
 	    for dataset in total_data:
 		int_encoded_data.append(dataset)
-	    #int_encoded_data = np.array(total_data[self.sim_steps*(i - 1):])
             int_encoded_data = np.array(int_encoded_data)
 	    print("int_encoded_data shape:",int_encoded_data.shape)
 	    int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
+	    print(int_encoded_data)
+	    print("int_encoded_data shape:",int_encoded_data.shape)
 	    db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
             np.save("./results/final_output/intermediate_data/int_encoded_data_%i.npy" % i, int_encoded_data)
-            #scatter_plot_rmsd(int_encoded_data, 
-	    #	               "Intermediate Latent Space (RL loop: %i, MD Sim: %i " % (i,j), 
-	    #	               "./results/iteration_rl_%i/sim_%i_%i/cluster/cluster_rmsd.png" % (i,i,j),
-	    #	               rmsd_values=rmsd_values) 	    
-            # Get indices of outliers
-	    print("total_data len:", len(total_data))
-            int_encoded_data = []
-            for dataset in total_data[(len(total_data) - self.sim_num):]:
-                int_encoded_data.append(dataset)
-            #int_encoded_data = np.array(total_data[self.sim_steps*(i - 1):])
-            int_encoded_data = np.array(int_encoded_data)
-            print("int_encoded_data shape:",int_encoded_data.shape)
-            int_encoded_data = np.reshape(int_encoded_data, (int_encoded_data.shape[0] * int_encoded_data.shape[1], int_encoded_data.shape[-1]))
-            db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
-            outlier_indices = get_cluster_indices(db.labels_)
+            scatter_plot_rmsd(int_encoded_data, 
+	    	               "Intermediate Latent Space (RL loop: %i, MD Sim: %i " % (i,j), 
+	    	               "./results/iteration_rl_%i/sim_%i_%i/cluster/cluster_rmsd.png" % (i,i,j),
+	    	               rmsd_values=rmsd_values) 	    
+            
+	    # Get indices of outliers
+	    outlier_indices = get_cluster_indices(db.labels_)
 	    accept_sims = []
 	    for ind in outlier_indices:
 		sim_ind = ind/(self.sim_steps/self.traj_out_freq) + 1
