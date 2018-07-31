@@ -33,16 +33,21 @@ class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
 	input_dim = -1 # Place holder
-        self.affine1 = nn.Linear(4, 128)
-        self.affine2 = nn.Linear(128, 2)
-
-        self.saved_log_probs = []
+        self.dense1 = nn.Linear(4, 128)
+        self.direction = nn.Linear(128, 2)
+	self.magnitude = nn.Linear(128, 4)
+	
+        self.saved_log_probs_direction = []
+	self.saved_log_probs_magnitude = []
         self.rewards = []
 
     def forward(self, x):
-        x = F.relu(self.affine1(x))
-        action_scores = self.affine2(x)
-        return F.softmax(action_scores, dim=1)
+        x = F.relu(self.dense1(x))
+        action_direction = self.direction(x)
+	action_magnitude = self.magnitude(x)
+	scores_direction = F.softmax(action_direction, dim=1)
+	scores_magnitude = F.softmax(action_magntiude, dim=1)
+        return scores_direction, scores_magnitude
 
 
 policy = Policy()
