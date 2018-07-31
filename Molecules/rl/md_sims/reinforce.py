@@ -57,11 +57,14 @@ eps = np.finfo(np.float32).eps.item()
 
 def select_action(state):
     state = torch.from_numpy(state).float().unsqueeze(0)
-    probs = policy(state)
-    m = Categorical(probs)
-    action = m.sample()
-    policy.saved_log_probs.append(m.log_prob(action))
-    return action.item()
+    probs_direction, probs_magnitude = policy.forward(state)
+    m_direction = Categorical(probs_direction)
+    m_magnitude = Categorical(probs_magnitude)
+    action_direction = m_direction.sample()
+    action_magnitude = m_magnitude.sample()
+    policy.saved_log_probs_direction.append(m_direction.log_prob(action_direction))
+    policy.saved_log_probs_magnitude.append(m_magnitude.log_prob(action_magnitude))
+    return action_direction.item(), action_magnitude.item()
 
 
 def finish_episode():
