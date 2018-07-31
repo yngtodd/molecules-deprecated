@@ -26,13 +26,21 @@ import MDAnalysis as mdanal
 from MDAnalysis.analysis.rms import RMSD
 from scipy import stats
 
-def get_intermediate_data(dir_path, num):
+def get_all_encoded_data(dir_path, num):
     data = []
-    for i in range(num):
-	data.append(np.load(dir_path + "int_encoded_data_%i.npy"))
+    if num == 0:
+     	data.append(np.load(dir_path + "/encoded_data_rl_%i.npy" % num))
+	#print("num = 0 data[0].shape = ",data[0].shape) 
+	#print("returning data[0] = ", data[0])
+	return data[0]
+    for i in range(num + 1):
+	data.append(np.load(dir_path + "/encoded_data_rl_%i.npy" % i))
+	#print(data[0], "hello")
+    #print("data len", len(data))
+    #print("data[0].shape = ", data[0].shape)
     data = np.array(data)
-    np.reshape(data, (data.shape[0] * data.shape[1], data.shape[-1]))
-    return data
+    #print(data.shape)
+    return np.reshape(data, (data.shape[0] * data.shape[1], data.shape[-1]))
 
 def scatter_plot_rmsd(data, title, save_path, rmsd_values, vmin=None, vmax=None):
     [n,s] = np.histogram(rmsd_values, 11)
@@ -275,6 +283,7 @@ class RL(object):
 	    #db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
             #np.save("./results/final_output/intermediate_data/int_encoded_data_%i.npy" % i, int_encoded_data)
             
+	    # Perform DBSCAN clustering on all the data produced in the ith RL iteration.
 	    db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(total_data)
 	    for cluster in Counter(db.labels_):
 		print(Counter(db.labels_))
@@ -283,9 +292,8 @@ class RL(object):
 		print("indices length:", len(indices))
 		rmsd_values = []
 		path_to_pdb = []
-		print(indices)
+		# TODO TAke out error checking.
 	        for ind in indices:
-	            ind %= self.sim_num*(self.sim_steps/self.traj_out_freq)
 		    sim_ind = ind / (self.sim_steps/self.traj_out_freq)
                     pdb_ind = ind % (self.sim_steps/self.traj_out_freq)
                     path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i, i, sim_ind, pdb_ind)
@@ -294,11 +302,10 @@ class RL(object):
 		    R.run()
 		    # For DBSCAN outliers
 		    if cluster == -1:
-			rmsd_value = R.rmsd[0,2]
-                        if rmsd_value < rmsd_threshold:
+			if R.rmsd[0,2] < rmsd_threshold:
                             # Start next rl iteration with this pdb path_1
                             print("RMSD threshold:", rmsd_threshold)
-                            print("RMSD to native contact for outlier at index %i :" % ind, rmsd_value)
+                            print("RMSD to native contact for outlier at index %i :" % ind, R.rmsd[0,2])
                             pdb_stack.append(path_1)
 		    # For RMSD outliers within DBSCAN clusters
 		    else:
@@ -339,9 +346,13 @@ class RL(object):
 	#rmsd_array = np.array(rmsd_values)
 		
      
-	all_encoded_data = np.array(total_data[:])
-	all_encoded_data = np.reshape(all_encoded_data, (all_encoded_data.shape[0] * all_encoded_data.shape[1], all_encoded_data.shape[-1]))
-	np.save("./results/final_output/all_encoded_data.npy", all_encoded_data)
+	#all_encoded_data = np.array(total_data[:])
+	#all_encoded_data = np.reshape(all_encoded_data, (all_encoded_data.shape[0] * all_encoded_data.shape[1], all_encoded_data.shape[-1]))
+	#np.save("./results/final_output/all_encoded_data.npy", all_encoded_data)
+	
+	path = "./results/final_output/intermediate_data/"
+	# Get data saved during RL iterations.
+	all_encoded_data = get_all_encoded_data(path, self.iterations - 1)
 	print("Final encoded data shape:", all_encoded_data.shape)	
 	scatter_plot(all_encoded_data, 'Latent Space (Before Clustering)', "./results/final_output/scatter.png")	
 
@@ -350,20 +361,20 @@ class RL(object):
         n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
         print('Estimated number of clusters: %d' % n_clusters_)
         print(Counter(db.labels_))
-        colors = db.labels_
+	# DBSCAN cluster plot
         scatter_plot(all_encoded_data, 
 		     'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples),
-		     "./results/final_output/clusters.png", color=colors)
+		     "./results/final_output/dbscan_clusters.png", color=db.labels_)
          
 	# RMSD to native state plot
 	scatter_plot_rmsd(all_encoded_data, 
 			  "Final Latent Space", 
 			  './results/final_output/rmsd_native_clusters.png',
 			  rmsd_values)	
+	# ALT: Could load full encoded_data and then set int_encoded_data to portions of it each loop iteration.
 	for i in range(0, self.iterations):
-            path = "./results/final_output/intermediate_data/"
-	    # TODO: Make function to concatenate multiple intermediate data files.
-            int_encoded_data = np.load(path + "int_encoded_data_%i.npy" % i)
+	    print(i)
+            int_encoded_data = get_all_encoded_data(path, i)
 	    int_rmsd_data = rmsd_values[:self.sim_num*(self.sim_steps/self.traj_out_freq)*(i + 1)]
 	    print("int_encoded_data:", len(int_encoded_data))
 	    print("int_rmsd_data:", len(int_rmsd_data))
@@ -371,14 +382,14 @@ class RL(object):
             n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
             print('Estimated number of clusters: %d' % n_clusters_)
             print(Counter(db.labels_))
-            colors = db.labels_
 	    scatter_plot(int_encoded_data,
                          'Intermediate Latent Space (Number of Clusters: %d, RL Loop: %i)' % (n_clusters_, i),
-                         path + "int_clusters_%i.png" % i, 
-			 color=colors)
+                         path + "dbscan_clusters_rl_%i.png" % i, 
+			 color=db.labels_)
+
 	    scatter_plot_rmsd(int_encoded_data,
                               "Intermediate Latent Space (RL Loop: %i)" % i,
-                               path + "int_cluster_rmsd_%i.png" % i,
+                               path + "cluster_rmsd_rl_%i.png" % i,
                                rmsd_values=int_rmsd_data,
 			       vmin=min(rmsd_values),
 			       vmax=max(rmsd_values))
@@ -386,5 +397,5 @@ class RL(object):
 	print("PDB files left to investigate:", len(pdb_stack))
 	    
 # Script for testing
-rl = RL(cvae_weights_path="../model_150.dms", iterations=3, sim_num=5)
+rl = RL(cvae_weights_path="../model_150.dms", iterations=5, sim_num=5)
 rl.execute()
