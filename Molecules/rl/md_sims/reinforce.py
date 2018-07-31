@@ -25,7 +25,8 @@ from torch.distributions import Categorical
 
 # TODO: Change to RMSD environment
 # Make own env
-env = gym.make('CartPole-v0')
+#env = gym.make('CartPole-v0')
+env = ENV()
 env.seed(args.seed) # Take out or put in random pdb
 # For reproducibility to initialize starting weights
 torch.manual_seed(42) 
@@ -93,11 +94,11 @@ def finish_episode():
 
 def main():
     # Take out running_reward
-    running_reward = 10
+    #running_reward = 10
     for i_episode in count(1):
 	# Reset pole to starting conditions
 	# Don't need
-        state = env.reset()
+        #state = env.reset()
         for t in range(10000):  # Don't infinite loop while learning
             action = select_action(state)
             state, reward, done, _ = env.step(action)
@@ -107,15 +108,15 @@ def main():
             if done:
                 break
 
-        running_reward = running_reward * 0.99 + t * 0.01
+        #running_reward = running_reward * 0.99 + t * 0.01
         finish_episode()
-        if i_episode % args.log_interval == 0:
-            print('Episode {}\tLast length: {:5d}\tAverage length: {:.2f}'.format(
-                i_episode, t, running_reward))
-        if running_reward > env.spec.reward_threshold:
-            print("Solved! Running reward is now {} and "
-                  "the last episode runs to {} time steps!".format(running_reward, t))
-            break
+        #if i_episode % args.log_interval == 0:
+         #   print('Episode {}\tLast length: {:5d}\tAverage length: {:.2f}'.format(
+          #      i_episode, t, running_reward))
+        #if running_reward > env.spec.reward_threshold:
+         #   print("Solved! Running reward is now {} and "
+          #        "the last episode runs to {} time steps!".format(running_reward, t))
+           # break
 
 
 if __name__ == '__main__':
