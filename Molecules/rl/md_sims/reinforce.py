@@ -12,21 +12,23 @@ import torch.optim as optim
 from torch.distributions import Categorical
 
 
-parser = argparse.ArgumentParser(description='PyTorch REINFORCE example')
-parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
-                    help='discount factor (default: 0.99)')
-parser.add_argument('--seed', type=int, default=543, metavar='N',
-                    help='random seed (default: 543)')
-parser.add_argument('--render', action='store_true',
-                    help='render the environment')
-parser.add_argument('--log-interval', type=int, default=10, metavar='N',
-                    help='interval between training status logs (default: 10)')
-args = parser.parse_args()
+#parser = argparse.ArgumentParser(description='PyTorch REINFORCE example')
+#parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
+#                    help='discount factor (default: 0.99)')
+#parser.add_argument('--seed', type=int, default=543, metavar='N',
+ #                   help='random seed (default: 543)')
+#parser.add_argument('--render', action='store_true',
+ #                   help='render the environment')
+#parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+  #                  help='interval between training status logs (default: 10)')
+#args = parser.parse_args()
 
-
+# TODO: Change to RMSD environment
+# Make own env
 env = gym.make('CartPole-v0')
-env.seed(args.seed)
-torch.manual_seed(args.seed)
+env.seed(args.seed) # Take out or put in random pdb
+# For reproducibility to initialize starting weights
+torch.manual_seed(42) 
 
 
 class Policy(nn.Module):
@@ -50,12 +52,15 @@ class Policy(nn.Module):
         return scores_direction, scores_magnitude
 
 
+# TODO: Double check params with Todd
 policy = Policy()
 optimizer = optim.Adam(policy.parameters(), lr=1e-2)
+# Randomly choose an eps to normalize rewards
 eps = np.finfo(np.float32).eps.item()
 
 
 def select_action(state):
+    # TODO: ask about Todd about state variable
     state = torch.from_numpy(state).float().unsqueeze(0)
     probs_direction, probs_magnitude = policy.forward(state)
     m_direction = Categorical(probs_direction)
@@ -87,14 +92,17 @@ def finish_episode():
 
 
 def main():
+    # Take out running_reward
     running_reward = 10
     for i_episode in count(1):
+	# Reset pole to starting conditions
+	# Don't need
         state = env.reset()
         for t in range(10000):  # Don't infinite loop while learning
             action = select_action(state)
             state, reward, done, _ = env.step(action)
-            if args.render:
-                env.render()
+            #if args.render:
+            #    env.render()
             policy.rewards.append(reward)
             if done:
                 break
