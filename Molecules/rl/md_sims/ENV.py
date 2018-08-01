@@ -105,8 +105,8 @@ def get_cluster_indices(labels, cluster=-1):
 
 class ENV(object):
 
-    def __init__(self, cvae_weights_path, iterations=10, 
-                 sim_num=10, sim_steps=20000, traj_out_freq=100,
+    def __init__(self, cvae_weights_path, iterations=1, 
+                 sim_num=1, sim_steps=20000, traj_out_freq=100,
                  native_pdb=None, initial_pdb=None):
         if initial_pdb == None:
             # For testing purposes
@@ -141,6 +141,9 @@ class ENV(object):
             os.mkdir("./results/final_output")
         if not os.path.exists("./results/final_output/intermediate_data"):
             os.mkdir("./results/final_output/intermediate_data")
+            
+        # RL Environment variables
+      
     
     def run_simulation(self, path, out_dcd_file, pdb_in=None, 
                        initial_rl_loop=False, ff='amber14-all.xml', 
@@ -247,8 +250,8 @@ class ENV(object):
                 print("Encoded data shape:", encoded_data.shape)
                 total_data.append(encoded_data)    
 
-                print("total_data len:", len(total_data))
-                total_data = np.array(total_data)
+            print("total_data len:", len(total_data))
+            total_data = np.array(total_data)
             total_data = np.reshape(total_data, (total_data.shape[0] * total_data.shape[1], total_data.shape[-1]))
             print("total_data shape:", total_data.shape)
             np.save("./results/final_output/intermediate_data/encoded_data_rl_%i.npy" % i, np.array(total_data))
@@ -315,8 +318,8 @@ class ENV(object):
         path = "./results/final_output/intermediate_data/"
         # Get data saved during RL iterations.
         all_encoded_data = get_all_encoded_data(path, self.iterations - 1)
-        print("Final encoded data shape:", all_encoded_data.shape)	
-        scatter_plot(all_encoded_data, 'Latent Space (Before Clustering)', "./results/final_output/scatter.png")	
+        print("Final encoded data shape:", all_encoded_data.shape)
+        scatter_plot(all_encoded_data, 'Latent Space (Before Clustering)', "./results/final_output/scatter.png")
 
         # Compute DBSCAN
         db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(all_encoded_data)
@@ -359,5 +362,5 @@ class ENV(object):
         print("PDB files left to investigate:", len(pdb_stack))
         
 # Script for testing
-rl = RL(cvae_weights_path="../model_150.dms", iterations=5, sim_num=5)
-rl.execute()
+#rl = RL(cvae_weights_path="../model_150.dms", iterations=5, sim_num=5)
+#rl.execute()
