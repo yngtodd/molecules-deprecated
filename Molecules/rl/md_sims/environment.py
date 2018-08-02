@@ -98,14 +98,15 @@ class environment(object):
             
         pdb_stack = []
         self.rmsd_threshold = 5.0 # Set to random seed?
+        
     
     def initial_state(self, path):
         # Run MD simulation
-        self.MDsimulation(path, self.dcd_file, self.initial_pdb[0])
+        self.MDsimulation(path)
         
         # Calculate contact matrix
         path_1 = path + "%i/sim_%i_%i/" % (0,0,0)
-        cm = ExtractNativeContact(path_1, pdb_file, dcd_file)
+        cm = ExtractNativeContact(path_1, self.pdb_file, self.dcd_file)
         cm.generate_contact_matrix()
         
         # Pass contact matrix through CVAE and retrieve encoded_data
@@ -154,8 +155,7 @@ class environment(object):
                     col += 1 
                 
                 row += 1
-            self.num_native_contacts.append(counter)
-            
+            self.num_native_contacts.append(counter)     
         
         # Perform DBSCAN clustering on all the data produced in the ith RL iteration.
         db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(encoded_data)
@@ -195,8 +195,10 @@ class environment(object):
                     # CVAE yields normally distributed clusters.
                     if zscore <= -3:
                         print("RMSD to native contact for DBSCAN clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values[ind])
-                        pdb_stack.append(path_to_pdb[ind][0]) 
+                        self.pdb_stack.append(path_to_pdb[ind][0]) 
                     ind += 1
+                    
+        return np.array(self.rmsd_state)
         
     
     def get_state(self):
@@ -219,17 +221,123 @@ class environment(object):
             reward += ((self.num_native_contacts[i] + self.rmsd_threshold)/(self.obs_in_cluster[i] + self.rmsd_state[i]))
         return (self.num_dbscan_cluster*reward/n)
     
-    def step(self, action):
+    def step(self, action, path, i_episode):
         # Take action
         #return state, reward, done
-        pass
+        self.rmsd_threshold = action
+        self.MDsimulation(path, self.dcd_file, self.initial_pdb[0])
+            
+        # Calculate contact matrix
+        path_1 = path 
+        cm = ExtractNativeContact(path_1, self.pdb_file, self.dcd_file)
+        cm.generate_contact_matrix()
+        
+        # Pass contact matrix through CVAE and retrieve encoded_data
+        cvae = CVAE(path=path_1, sep_train=0, sep_test=0, sep_pred=1, f_traj=self.sim_steps/self.traj_out_freq)
+        cvae.load_contact_matrix(path_1 + "native-contact/data/cont-mat.dat",
+                                 path_1 + "native-contact/data/cont-mat.array")
+        cvae.compile()
+        cvae.load_weights(self.cvae_weights_path)
+        encoded_data = cvae.encode_pred()
+        np.save("./results/final_output/intermediate_data/encoded_data_rl_%i.npy" % i_episode, encoded_data)
+        
+        # Calculate rmsd values for each PDB file sampled.
+        self.rmsd_state = []
+        for i in range(self.sim_steps/self.traj_out_freq):
+            path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i_episode, i_episode, 0, i)
+            u = mdanal.Universe(path_1)
+            R = RMSD(u, self.native_protein)
+            R.run()
+            self.rmsd_state.append(R.rmsd[0,2])
+       
+        # Calculate number of native contacts for state
+        self.num_native_contacts = []
+        # Build native contact matrix
+        calc_native_contact(native_pdb=self.native_pdb,
+                            out_path= './results/final_output')
+        
+        path_1 = path + "%i/sim_%i_%i/" % (i_episode, 0, i_episode)
+        fin = open('./results/final_output/cont-mat.array', "r")
+        native_cont_mat = fin.read()
+        fin.close()
+        native_cont_mat = np.fromstring(native_cont_mat, dtype='float32', sep=' ')
+        n = int(sqrt(native_cont_mat.shape[0]))
+        for i in range(self.sim_steps/self.traj_out_freq):
+            fin = open(path_1 + "native-contact/raw/cont-mat_%i.array" % i)
+            ith_cont_mat = fin.read()
+            fin.close()
+            ith_cont_mat = np.fromstring(ith_cont_mat, dtype='float32', sep=' ')
+            counter = 0
+            row = 0
+            while row < n + 2:
+                col = row + 2
+                shift = row * n
+                while col < n:
+                    if ith_cont_mat[shift + col] == native_cont_mat[shift + col]:
+                        counter += 1
+                    col += 1 
+                
+                row += 1
+            self.num_native_contacts.append(counter)     
+        
+        # Perform DBSCAN clustering on all the data produced in the ith RL iteration.
+        db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(encoded_data)
+        # Compute number of observations in the DBSCAN cluster of the ith PDB
+        self.obs_in_cluster = []
+        labels_dict = Counter(db.labels_)
+        # Compute number of DBSCAN clusters for reward function
+        self.num_dbscan_clusters = len(labels_dict)
+        for label in db.labels:
+            self.obs_in_cluster.append(labels_dict[label])
+            
+        for cluster in Counter(db.labels_):
+            indices = get_cluster_indices(labels=db.labels_, cluster=cluster)
+            path_to_pdb = []
+            rmsd_values = []
+            for ind in indices:
+                path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i_episode, i_episode, 0, ind)
+                # For DBSCAN outliers
+                if cluster == -1:
+                    if rmsd_state[ind] < self.rmsd_threshold:
+                        # Start next rl iteration with this pdb path_1
+                        print("RMSD threshold:", self.rmsd_threshold)
+                        print("RMSD to native contact for DBSCAN outlier at index %i :" % ind, rmsd_state[ind])
+                        pdb_stack.append(path_1)
+                # For RMSD outliers within DBSCAN clusters
+                else:
+                    rmsd_values.append(rmsd_state[ind])
+                    path_to_pdb.append((path_1, ind))
+            # For RMSD outliers within DBSCAN clusters
+            if cluster != -1:
+                rmsd_array = np.array(rmsd_values)
+                rmsd_zscores = stats.zscore(rmsd_array)
+                ind = 0
+                for zscore in rmsd_zscores:
+                    # z-score of -3 marks outlier for a normal distribution.
+                    # Assuming Normal Distribution of RMSD values because 
+                    # CVAE yields normally distributed clusters.
+                    if zscore <= -3:
+                        print("RMSD to native contact for DBSCAN clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values[ind])
+                        self.pdb_stack.append(path_to_pdb[ind][0]) 
+                    ind += 1
+            
+        return (np.array(self.rmsd_state), reward(), len(self.pdb_stack) == 0) 
+        
     
-    def MDsimulation(self, path, out_dcd_file, pdb_in, 
+    def MDsimulation(self, path, out_dcd_file=None, pdb_in=None, 
                      ff='amber14-all.xml', 
                      water_model='amber14/tip3pfb.xml'):
         if not os.path.exists(path):
             raise Exception("Path: " + str(path) + " does not exist!")
-     
+        if out_dcd_file==None:
+            out_dcd_file=self.dcd_file
+        if pdb_in==None:
+            if len(self.pdb_stack) == 0:
+                pdb_in=self.initial_pdb[0]
+            else:
+                pdb = self.pdb_stack[-1]
+                self.pdb_stack.pop()
+                             
         pdb = PDBFile(pdb_in)
         
         forcefield = ForceField(ff, water_model)

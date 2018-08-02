@@ -105,8 +105,9 @@ class reinforce(object):
             os.mkdir(path_1 + "/cluster", 0755)
             os.mkdir(path_1 + "/pdb_data", 0755)
     
-        state = env.intial_state(path)
+        state = self.env.intial_state(path)
         for i_episode in count(1):
+            # Create Directories
             if not os.path.exists(path + "%i" % i_episode):
                 os.mkdir(path + "%i" % i_episode, 0755)
             path_1 = path + "%i/sim_%i_%i/" % (i_episode, i_episode, 0)
@@ -116,7 +117,7 @@ class reinforce(object):
                 os.mkdir(path_1 + "/pdb_data", 0755)
                 
             action = select_action(state)
-            state, reward, done = env.step(action)
+            state, reward, done = env.step(action, path_1, i_episode)
             policy.rewards.append(reward)
             if done:
                 break
