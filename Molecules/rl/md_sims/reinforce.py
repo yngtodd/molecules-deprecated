@@ -116,7 +116,7 @@ class reinforce(object):
                 os.mkdir(path_1 + "/pdb_data", 0755)
                 
             action = select_action(state)
-            state, reward, done, _ = env.step(action)
+            state, reward, done = env.step(action)
             policy.rewards.append(reward)
             if done:
                 break
