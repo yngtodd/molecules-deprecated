@@ -202,11 +202,8 @@ class environment(object):
         
     
     def get_state(self):
-        pass
+        return np.array(self.rmsd_state)
     
-    def action(self):
-        # Take action based on state
-        pass
     
     def reward(self):
         # Before calc assert that each vector is the same length
