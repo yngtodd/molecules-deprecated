@@ -23,6 +23,10 @@ import MDAnalysis as mdanal
 from MDAnalysis.analysis.rms import RMSD
 from scipy import stats
 
+# For calc_native_contact()
+from MDAnalysis.analysis import contacts
+import gzip
+
 def get_cluster_indices(labels, cluster=-1):
     """
     labels : DBSCAN.labels_ object (numpy array)
@@ -39,7 +43,7 @@ def get_cluster_indices(labels, cluster=-1):
 def calc_native_contact(native_pdb, out_path):
     u_native = mdanal.Universe(native_pdb)
     CA = "(name CA and resid 1:24)"
-    CA0 = u0.select_atoms(CA)
+    CA0 = u_native.select_atoms(CA)
     ca = contacts.ContactAnalysis1(u_native, selection=(CA, CA), refgroup=(CA0, CA0), radius=8.0, 
                                    outfile= out_path + '/native-cont-mat.dat')    
     ca.run(store=True, start=0, stop=1, step=1)
@@ -81,7 +85,7 @@ class environment(object):
         self.num_dbscan_cluster = -2
         
         # IO variables
-        self.dcd_file = 'output-0.dcd'
+        self.dcd_file = 'output-1.dcd'
         self.pdb_file = 'output.pdb'
         # For testing purposes
         self.initial_pdb = ['/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-0.pdb',
@@ -95,15 +99,21 @@ class environment(object):
             self.native_pdb = '/home/a05/data/fs-peptide/raw_MD_data/fs-peptide.pdb'
         else:
             self.native_pdb = native_pdb
-            
-        pdb_stack = []
+        self.native_protein = mdanal.Universe(self.native_pdb)
+	 
+	self.cvae_weights_path = cvae_weights_path
+	self.sim_steps = sim_steps
+	self.traj_out_freq = traj_out_freq    
+        self.pdb_stack = []
         self.rmsd_threshold = 5.0 # Set to random seed?
-        
+        # DBSCAN params
+	self.d_eps = 0.1
+	self.d_min_samples = 10
     
     def initial_state(self, path):
         # Run MD simulation
-        self.MDsimulation(path)
-        self.internal_step(path=path + "%i/sim_%i_%i/" % (0,0,0), i_episode=0)            
+        self.MDsimulation(path + "%i/sim_%i_%i/" % (0, 0, 0))
+        self.internal_step(path=path, i_episode=0)            
         return np.array(self.rmsd_state)
         
     
@@ -113,9 +123,9 @@ class environment(object):
     
     def reward(self):
         # Before calc assert that each vector is the same length
-        if (len(self.rmsd_state) != len(self.num_native_contacts):
+        if len(self.rmsd_state) != len(self.num_native_contacts):
             raise Exception("Shape mismatch")
-        if (len(self.rmsd_state) != len(self.obs_in_cluster):
+        if len(self.rmsd_state) != len(self.obs_in_cluster):
             raise Exception("Shape mismatch")
          
         reward = 0    
@@ -175,7 +185,7 @@ class environment(object):
             
     def internal_step(self, path, i_episode):
         # Calculate contact matrix
-        path_1 = path 
+	path_1 = path + "%i/sim_%i_%i/" % (i_episode, 0, i_episode) 
         cm = ExtractNativeContact(path_1, self.pdb_file, self.dcd_file)
         cm.generate_contact_matrix()
         
@@ -204,7 +214,7 @@ class environment(object):
                             out_path= './results/final_output')
         
         path_1 = path + "%i/sim_%i_%i/" % (i_episode, 0, i_episode)
-        fin = open('./results/final_output/cont-mat.array', "r")
+        fin = open('./results/final_output/native-cont-mat.array', "r")
         native_cont_mat = fin.read()
         fin.close()
         native_cont_mat = np.fromstring(native_cont_mat, dtype='float32', sep=' ')
@@ -228,13 +238,13 @@ class environment(object):
             self.num_native_contacts.append(counter)     
         
         # Perform DBSCAN clustering on all the data produced in the ith RL iteration.
-        db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(encoded_data)
+        db = DBSCAN(eps=self.d_eps, min_samples=self.d_min_samples).fit(encoded_data)
         # Compute number of observations in the DBSCAN cluster of the ith PDB
         self.obs_in_cluster = []
         labels_dict = Counter(db.labels_)
         # Compute number of DBSCAN clusters for reward function
         self.num_dbscan_clusters = len(labels_dict)
-        for label in db.labels:
+        for label in db.labels_:
             self.obs_in_cluster.append(labels_dict[label])
             
         for cluster in Counter(db.labels_):
@@ -245,14 +255,14 @@ class environment(object):
                 path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i_episode, i_episode, 0, ind)
                 # For DBSCAN outliers
                 if cluster == -1:
-                    if rmsd_state[ind] < self.rmsd_threshold:
+                    if self.rmsd_state[ind] < self.rmsd_threshold:
                         # Start next rl iteration with this pdb path_1
                         print("RMSD threshold:", self.rmsd_threshold)
-                        print("RMSD to native contact for DBSCAN outlier at index %i :" % ind, rmsd_state[ind])
+                        print("RMSD to native contact for DBSCAN outlier at index %i :" % ind, self.rmsd_state[ind])
                         pdb_stack.append(path_1)
                 # For RMSD outliers within DBSCAN clusters
                 else:
-                    rmsd_values.append(rmsd_state[ind])
+                    rmsd_values.append(self.rmsd_state[ind])
                     path_to_pdb.append((path_1, ind))
             # For RMSD outliers within DBSCAN clusters
             if cluster != -1:

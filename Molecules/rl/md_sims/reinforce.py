@@ -1,7 +1,9 @@
 # Code adapted from https://github.com/pytorch/examples/blob/master/reinforcement_learning/reinforce.py
 
+from environment import environment
 import numpy as np
 from itertools import count
+import os
 
 import torch
 import torch.nn as nn
@@ -51,7 +53,7 @@ class reinforce(object):
         self.optimizer = optim.Adam(self.policy.parameters(), lr=1e-2)
         # Randomly choose an eps to normalize rewards
         self.eps = np.finfo(np.float32).eps.item()
-        self.env = environment()
+        self.env = environment(cvae_weights_path="../model_150.dms")
         
         
         # Build initial directories
@@ -99,7 +101,7 @@ class reinforce(object):
         del self.policy.rewards[:]
         del self.policy.saved_log_probs[:]
 
-    def main():
+    def main(self):
         path = "./results/iteration_rl_"
         if not os.path.exists(path + "%i" % 0):
             os.mkdir(path + "%i" % 0, 0755)
@@ -109,7 +111,7 @@ class reinforce(object):
             os.mkdir(path_1 + "/cluster", 0755)
             os.mkdir(path_1 + "/pdb_data", 0755)
     
-        state = self.env.intial_state(path)
+        state = self.env.initial_state(path)
         for i_episode in count(1):
             # Create Directories
             if not os.path.exists(path + "%i" % i_episode):
