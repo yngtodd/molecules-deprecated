@@ -1,7 +1,5 @@
 # Code adapted from https://github.com/pytorch/examples/blob/master/reinforcement_learning/reinforce.py
 
-import argparse
-import gym
 import numpy as np
 from itertools import count
 
