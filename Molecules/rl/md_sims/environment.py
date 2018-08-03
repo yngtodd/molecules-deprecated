@@ -82,7 +82,7 @@ class environment(object):
         self.rmsd_state = []
         self.num_native_contacts = []
         self.obs_in_cluster = []
-        self.num_dbscan_cluster = -2
+        self.num_dbscan_clusters = 1
         
         # IO variables
         self.dcd_file = 'output-1.dcd'
@@ -107,8 +107,8 @@ class environment(object):
         self.pdb_stack = []
         self.rmsd_threshold = 10.0 # Set to random seed?
         # DBSCAN params
-	self.d_eps = 0.1
-	self.d_min_samples = 10
+	self.d_eps = 0.03
+	self.d_min_samples = 4 #10
     
     def initial_state(self, path):
         # Run MD simulation
@@ -129,12 +129,21 @@ class environment(object):
             raise Exception("Shape mismatch")
          
         reward = 0.0    
-        n = self.sim_steps/self.traj_out_freq
+        n = self.sim_steps/self.traj_out_freq # 200
         for i in range(n):
+	    #print('num:', num = float(self.num_native_contacts[i]) + self.rmsd_threshold)
+	    #print('den:', den = float(self.obs_in_cluster[i]) + self.rmsd_state[i])
 	    num = float(self.num_native_contacts[i]) + self.rmsd_threshold
 	    den = float(self.obs_in_cluster[i]) + self.rmsd_state[i]
-            reward += num/den
-	return (self.num_dbscan_cluster*reward/n)
+            print('num', num)
+	    print('den', den)
+	    print('float(self.num_native_contacts[i]):',float(self.num_native_contacts[i]))
+	    print('float(self.obs_in_cluster[i]):', float(self.obs_in_cluster[i]))
+	    print('self.rmsd_state[i]:', self.rmsd_state[i])
+	    reward += num/den
+	if self.num_dbscan_clusters < 0:
+	    print('obs less than 0:', self.num_dbscan_clusters)
+	return (self.num_dbscan_clusters*reward/n)
     
     def step(self, action, path, i_episode):
         # Take action
@@ -158,7 +167,8 @@ class environment(object):
             out_dcd_file=self.dcd_file
         if pdb_in==None:
             if len(self.pdb_stack) == 0:
-                pdb_in=self.initial_pdb[0]
+                pdb_in = self.initial_pdb[0]
+		print("Using initial PDB")
             else:
                 pdb_in = self.pdb_stack[-1]
                 self.pdb_stack.pop()
@@ -258,6 +268,8 @@ class environment(object):
             self.obs_in_cluster.append(labels_dict[label])
             
         for cluster in Counter(db.labels_):
+	    print('dbscan cluster:',cluster)
+	    print('dbscan clusters:',Counter(db.labels_))
             indices = get_cluster_indices(labels=db.labels_, cluster=cluster)
             path_to_pdb = []
             rmsd_values = []
@@ -269,7 +281,7 @@ class environment(object):
                         # Start next rl iteration with this pdb path_1
                         print("RMSD threshold:", self.rmsd_threshold)
                         print("RMSD to native contact for DBSCAN outlier at index %i :" % ind, self.rmsd_state[ind])
-                        pdb_stack.append(path_1)
+                        self.pdb_stack.append(path_1)
                 # For RMSD outliers within DBSCAN clusters
                 else:
                     rmsd_values.append(self.rmsd_state[ind])
