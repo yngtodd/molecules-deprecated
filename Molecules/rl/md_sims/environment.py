@@ -105,7 +105,7 @@ class environment(object):
 	self.sim_steps = sim_steps
 	self.traj_out_freq = traj_out_freq    
         self.pdb_stack = []
-        self.rmsd_threshold = 5.0 # Set to random seed?
+        self.rmsd_threshold = 10.0 # Set to random seed?
         # DBSCAN params
 	self.d_eps = 0.1
 	self.d_min_samples = 10
@@ -139,9 +139,13 @@ class environment(object):
     def step(self, action, path, i_episode):
         # Take action
         #return state, reward, done
-        self.rmsd_threshold = action
-        self.MDsimulation(path, self.dcd_file, self.initial_pdb[0])
+	print("Before update:",self.rmsd_threshold)
+        self.rmsd_threshold += action
+	print("After update:",self.rmsd_threshold)
+	print("len of pdb_stack before sim:",len(self.pdb_stack))
+        self.MDsimulation(path)
         self.internal_step(path, i_episode)
+	print("len of pdb_stack After sim:",len(self.pdb_stack))
         return (np.array(self.rmsd_state), self.reward(), len(self.pdb_stack) == 0) 
         
     
@@ -156,7 +160,7 @@ class environment(object):
             if len(self.pdb_stack) == 0:
                 pdb_in=self.initial_pdb[0]
             else:
-                pdb = self.pdb_stack[-1]
+                pdb_in = self.pdb_stack[-1]
                 self.pdb_stack.pop()
                              
         pdb = PDBFile(pdb_in)
