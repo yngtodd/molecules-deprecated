@@ -79,7 +79,14 @@ class reinforce(object):
         action_magnitude = m_magnitude.sample()
         self.policy.saved_log_probs_direction.append(m_direction.log_prob(action_direction))
         self.policy.saved_log_probs_magnitude.append(m_magnitude.log_prob(action_magnitude))
-        return action_direction.item(), action_magnitude.item()
+	
+        # Selecting new RMSD threshold
+	dirs = [-1, 1]
+	direction = dirs[action_direction.item()]
+	mags = [0.1, 0.2, 0.5, .9]
+	magnitude = mags[action_magnitude.item()]
+
+        return direction*magnitude
     
     def finish_episode(self):
         R = 0

@@ -131,11 +131,8 @@ class environment(object):
         reward = 0.0    
         n = self.sim_steps/self.traj_out_freq
         for i in range(n):
-	    print(self.rmsd_threshold)
-	    print(type(self.rmsd_threshold))
 	    num = float(self.num_native_contacts[i]) + self.rmsd_threshold
 	    den = float(self.obs_in_cluster[i]) + self.rmsd_state[i]
-            #reward += (float(self.num_native_contacts[i]) + self.rmsd_threshold)/(float(self.obs_in_cluster[i]) + self.rmsd_state[i])
             reward += num/den
 	return (self.num_dbscan_cluster*reward/n)
     
