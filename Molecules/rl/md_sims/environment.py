@@ -103,101 +103,7 @@ class environment(object):
     def initial_state(self, path):
         # Run MD simulation
         self.MDsimulation(path)
-        
-        # Calculate contact matrix
-        path_1 = path + "%i/sim_%i_%i/" % (0,0,0)
-        cm = ExtractNativeContact(path_1, self.pdb_file, self.dcd_file)
-        cm.generate_contact_matrix()
-        
-        # Pass contact matrix through CVAE and retrieve encoded_data
-        cvae = CVAE(path=path_1, sep_train=0, sep_test=0, sep_pred=1, f_traj=self.sim_steps/self.traj_out_freq)
-        cvae.load_contact_matrix(path_1 + "native-contact/data/cont-mat.dat",
-                                 path_1 + "native-contact/data/cont-mat.array")
-        cvae.compile()
-        cvae.load_weights(self.cvae_weights_path)
-        encoded_data = cvae.encode_pred()
-        np.save("./results/final_output/intermediate_data/encoded_data_rl_%i.npy" % 0, encoded_data)
-        
-        # Calculate rmsd values for each PDB file sampled.
-        self.rmsd_state = []
-        for i in range(self.sim_steps/self.traj_out_freq):
-            path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (0, 0, 0, i)
-            u = mdanal.Universe(path_1)
-            R = RMSD(u, self.native_protein)
-            R.run()
-            self.rmsd_state.append(R.rmsd[0,2])
-       
-        # Calculate number of native contacts for state
-        self.num_native_contacts = []
-        # Build native contact matrix
-        calc_native_contact(native_pdb=self.native_pdb,
-                            out_path= './results/final_output')
-        
-        path_1 = path + "%i/sim_%i_%i/" % (0,0,0)
-        fin = open('./results/final_output/cont-mat.array', "r")
-        native_cont_mat = fin.read()
-        fin.close()
-        native_cont_mat = np.fromstring(native_cont_mat, dtype='float32', sep=' ')
-        n = int(sqrt(native_cont_mat.shape[0]))
-        for i in range(self.sim_steps/self.traj_out_freq):
-            fin = open(path_1 + "native-contact/raw/cont-mat_%i.array" % i)
-            ith_cont_mat = fin.read()
-            fin.close()
-            ith_cont_mat = np.fromstring(ith_cont_mat, dtype='float32', sep=' ')
-            counter = 0
-            row = 0
-            while row < n + 2:
-                col = row + 2
-                shift = row * n
-                while col < n:
-                    if ith_cont_mat[shift + col] == native_cont_mat[shift + col]:
-                        counter += 1
-                    col += 1 
-                
-                row += 1
-            self.num_native_contacts.append(counter)     
-        
-        # Perform DBSCAN clustering on all the data produced in the ith RL iteration.
-        db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(encoded_data)
-        # Compute number of observations in the DBSCAN cluster of the ith PDB
-        self.obs_in_cluster = []
-        labels_dict = Counter(db.labels_)
-        # Compute number of DBSCAN clusters for reward function
-        self.num_dbscan_clusters = len(labels_dict)
-        for label in db.labels:
-            self.obs_in_cluster.append(labels_dict[label])
-            
-        for cluster in Counter(db.labels_):
-            indices = get_cluster_indices(labels=db.labels_, cluster=cluster)
-            path_to_pdb = []
-            rmsd_values = []
-            for ind in indices:
-                path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (0, 0, 0, ind)
-                # For DBSCAN outliers
-                if cluster == -1:
-                    if rmsd_state[ind] < self.rmsd_threshold:
-                        # Start next rl iteration with this pdb path_1
-                        print("RMSD threshold:", self.rmsd_threshold)
-                        print("RMSD to native contact for DBSCAN outlier at index %i :" % ind, rmsd_state[ind])
-                        pdb_stack.append(path_1)
-                # For RMSD outliers within DBSCAN clusters
-                else:
-                    rmsd_values.append(rmsd_state[ind])
-                    path_to_pdb.append((path_1, ind))
-            # For RMSD outliers within DBSCAN clusters
-            if cluster != -1:
-                rmsd_array = np.array(rmsd_values)
-                rmsd_zscores = stats.zscore(rmsd_array)
-                ind = 0
-                for zscore in rmsd_zscores:
-                    # z-score of -3 marks outlier for a normal distribution.
-                    # Assuming Normal Distribution of RMSD values because 
-                    # CVAE yields normally distributed clusters.
-                    if zscore <= -3:
-                        print("RMSD to native contact for DBSCAN clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values[ind])
-                        self.pdb_stack.append(path_to_pdb[ind][0]) 
-                    ind += 1
-                    
+        self.internal_step(path=path + "%i/sim_%i_%i/" % (0,0,0), i_episode=0)            
         return np.array(self.rmsd_state)
         
     
@@ -223,7 +129,51 @@ class environment(object):
         #return state, reward, done
         self.rmsd_threshold = action
         self.MDsimulation(path, self.dcd_file, self.initial_pdb[0])
+        self.internal_step(path, i_episode)
+        return (np.array(self.rmsd_state), reward(), len(self.pdb_stack) == 0) 
+        
+    
+    def MDsimulation(self, path, out_dcd_file=None, pdb_in=None, 
+                     ff='amber14-all.xml', 
+                     water_model='amber14/tip3pfb.xml'):
+        if not os.path.exists(path):
+            raise Exception("Path: " + str(path) + " does not exist!")
+        if out_dcd_file==None:
+            out_dcd_file=self.dcd_file
+        if pdb_in==None:
+            if len(self.pdb_stack) == 0:
+                pdb_in=self.initial_pdb[0]
+            else:
+                pdb = self.pdb_stack[-1]
+                self.pdb_stack.pop()
+                             
+        pdb = PDBFile(pdb_in)
+        
+        forcefield = ForceField(ff, water_model)
+        system = forcefield.createSystem(pdb.topology, nonbondedMethod=NoCutoff,
+                                         nonbondedCutoff=1.0*nanometer, constraints=HBonds)
+        integrator = LangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
+        simulation = Simulation(pdb.topology, system, integrator)
+        # Start back from output.pdb last frame
+        simulation.context.setPositions(pdb.positions)
+        simulation.minimizeEnergy()
+        # Saves step every "traj_out_freq" to a DCD file. 
+        simulation.reporters.append(DCDReporter(path + out_dcd_file, self.traj_out_freq))
+        # For every step saved in the DCD we save a corresponding PDB file.
+        for i in range(self.sim_steps/self.traj_out_freq):
+            simulation.reporters.append(PDBReporter(path + "pdb_data/output-%i.pdb" % i, self.traj_out_freq))
+            simulation.step(self.traj_out_freq)
+            simulation.reporters.pop()
+
+        # Writes the final PDB file to the same directory where the DCD file is saved.
+        fin = open(path + "pdb_data/output-%i.pdb" % (self.sim_steps/self.traj_out_freq - 1))
+        final_pdb_data = fin.read()
+        fin.close()
+        fout = open(path + "/output.pdb", 'w')
+        fout.write(final_pdb_data)
+        fout.close()
             
+    def internal_step(self, path, i_episode):
         # Calculate contact matrix
         path_1 = path 
         cm = ExtractNativeContact(path_1, self.pdb_file, self.dcd_file)
@@ -318,45 +268,3 @@ class environment(object):
                         self.pdb_stack.append(path_to_pdb[ind][0]) 
                     ind += 1
             
-        return (np.array(self.rmsd_state), reward(), len(self.pdb_stack) == 0) 
-        
-    
-    def MDsimulation(self, path, out_dcd_file=None, pdb_in=None, 
-                     ff='amber14-all.xml', 
-                     water_model='amber14/tip3pfb.xml'):
-        if not os.path.exists(path):
-            raise Exception("Path: " + str(path) + " does not exist!")
-        if out_dcd_file==None:
-            out_dcd_file=self.dcd_file
-        if pdb_in==None:
-            if len(self.pdb_stack) == 0:
-                pdb_in=self.initial_pdb[0]
-            else:
-                pdb = self.pdb_stack[-1]
-                self.pdb_stack.pop()
-                             
-        pdb = PDBFile(pdb_in)
-        
-        forcefield = ForceField(ff, water_model)
-        system = forcefield.createSystem(pdb.topology, nonbondedMethod=NoCutoff,
-                                         nonbondedCutoff=1.0*nanometer, constraints=HBonds)
-        integrator = LangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
-        simulation = Simulation(pdb.topology, system, integrator)
-        # Start back from output.pdb last frame
-        simulation.context.setPositions(pdb.positions)
-        simulation.minimizeEnergy()
-        # Saves step every "traj_out_freq" to a DCD file. 
-        simulation.reporters.append(DCDReporter(path + out_dcd_file, self.traj_out_freq))
-        # For every step saved in the DCD we save a corresponding PDB file.
-        for i in range(self.sim_steps/self.traj_out_freq):
-            simulation.reporters.append(PDBReporter(path + "pdb_data/output-%i.pdb" % i, self.traj_out_freq))
-            simulation.step(self.traj_out_freq)
-            simulation.reporters.pop()
-
-        # Writes the final PDB file to the same directory where the DCD file is saved.
-        fin = open(path + "pdb_data/output-%i.pdb" % (self.sim_steps/self.traj_out_freq - 1))
-        final_pdb_data = fin.read()
-        fin.close()
-        fout = open(path + "/output.pdb", 'w')
-        fout.write(final_pdb_data)
-        fout.close()
