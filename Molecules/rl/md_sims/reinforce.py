@@ -1,7 +1,5 @@
 # Code adapted from https://github.com/pytorch/examples/blob/master/reinforcement_learning/reinforce.py
 
-import argparse
-import gym
 import numpy as np
 from itertools import count
 
@@ -81,19 +79,25 @@ class reinforce(object):
         R = 0
         policy_loss = []
         rewards = []
-        for r in self.policy.rewards[::-1]:
-            R = r + args.gamma * R
-            rewards.insert(0, R)
+        gamma = 0.1
+        #for r in self.policy.rewards[::-1]:
+        #    R = r + args.gamma * R
+        #    rewards.insert(0, R)
+        for r in self.policy.rewards:
+            R = r + gamma * R
+            rewards.append(R)
+            
         rewards = torch.tensor(rewards)
         rewards = (rewards - rewards.mean()) / (rewards.std() + eps)
-        for log_prob, reward in zip(self.policy.saved_log_probs, rewards):
-            policy_loss.append(-log_prob * reward)
-        optimizer.zero_grad()
+        
+        for log_prob_dir, log_prob_mag, reward in zip(self.policy.saved_log_probs_direction, self.policy.saved_log_probs_magnitude, rewards):
+            policy_loss.append(-(log_prob_dir + log_prob_mag) * reward)
+        self.optimizer.zero_grad()
         policy_loss = torch.cat(policy_loss).sum()
         policy_loss.backward()
-        optimizer.step()
-        del policy.rewards[:]
-        del policy.saved_log_probs[:]
+        self.optimizer.step()
+        del self.policy.rewards[:]
+        del self.policy.saved_log_probs[:]
 
     def main():
         path = "./results/iteration_rl_"
@@ -116,9 +120,9 @@ class reinforce(object):
                 os.mkdir(path_1 + "/cluster", 0755)
                 os.mkdir(path_1 + "/pdb_data", 0755)
                 
-            action = select_action(state)
-            state, reward, done = env.step(action, path_1, i_episode)
-            policy.rewards.append(reward)
+            action = self.select_action(state)
+            state, reward, done = self.env.step(action, path_1, i_episode)
+            self.policy.rewards.append(reward)
             if done:
                 break
 
