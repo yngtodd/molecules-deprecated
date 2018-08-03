@@ -25,10 +25,9 @@ from torch.distributions import Categorical
 
 
 class Policy(nn.Module):
-    def __init__(self):
-        super(Policy, self).__init__()
-        input_dim = -1 # Place holder
-        self.dense1 = nn.Linear(4, 128)
+    def __init__(self, input_dim):
+        super(Policy, self).__init__() 
+        self.dense1 = nn.Linear(input_dim, 128)
         self.direction = nn.Linear(128, 2)
         self.magnitude = nn.Linear(128, 4)
 
@@ -37,23 +36,28 @@ class Policy(nn.Module):
         self.rewards = []
 
     def forward(self, x):
+	
         x = F.relu(self.dense1(x))
         action_direction = self.direction(x)
         action_magnitude = self.magnitude(x)
         scores_direction = F.softmax(action_direction, dim=1)
-        scores_magnitude = F.softmax(action_magntiude, dim=1)
+        scores_magnitude = F.softmax(action_magnitude, dim=1)
         return scores_direction, scores_magnitude
 
     
 class reinforce(object):
-    def __init__(self):
+    def __init__(self, sim_steps=20000, traj_out_freq=100):
         # For reproducibility to initialize starting weights
         torch.manual_seed(42)
-        self.policy = Policy()
+	self.sim_steps = sim_steps
+	self.traj_out_freq = traj_out_freq
+        self.policy = Policy(input_dim=sim_steps/traj_out_freq)
         self.optimizer = optim.Adam(self.policy.parameters(), lr=1e-2)
         # Randomly choose an eps to normalize rewards
         self.eps = np.finfo(np.float32).eps.item()
-        self.env = environment(cvae_weights_path="../model_150.dms")
+        self.env = environment(cvae_weights_path="../model_150.dms",
+			       sim_steps=self.sim_steps,
+			       traj_out_freq=self.traj_out_freq)
         
         
         # Build initial directories
@@ -111,7 +115,7 @@ class reinforce(object):
             os.mkdir(path_1 + "/cluster", 0755)
             os.mkdir(path_1 + "/pdb_data", 0755)
     
-        state = self.env.initial_state(path)
+        state = self.env.initial_state(path_1)
         for i_episode in count(1):
             # Create Directories
             if not os.path.exists(path + "%i" % i_episode):

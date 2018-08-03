@@ -40,14 +40,14 @@ def get_cluster_indices(labels, cluster=-1):
             indices.append(i)
     return indices
 
-def calc_native_contact(native_pdb, out_path):
+def calc_native_contact(native_pdb, out_path, dat_file='cont-mat.dat', array_file='cont-mat.array'):
     u_native = mdanal.Universe(native_pdb)
     CA = "(name CA and resid 1:24)"
     CA0 = u_native.select_atoms(CA)
     ca = contacts.ContactAnalysis1(u_native, selection=(CA, CA), refgroup=(CA0, CA0), radius=8.0, 
-                                   outfile= out_path + '/native-cont-mat.dat')    
+                                   outfile= out_path + '/' + dat_file)    
     ca.run(store=True, start=0, stop=1, step=1)
-    inF_array = gzip.GzipFile(out_path + '/native-cont-mat.array.gz', 'rb')
+    inF_array = gzip.GzipFile(out_path + '/' + array_file +'.gz', 'rb')
     s_array = inF_array.read()
     inF_array.close()
     arr = s_array
@@ -68,11 +68,11 @@ def calc_native_contact(native_pdb, out_path):
         temp += '\n'
     s_array = temp
     # copy to another file
-    outF_array = file(out_path + '/native-cont-mat.array', 'wb')
+    outF_array = file(out_path + '/' + array_file, 'wb')
     outF_array.write(s_array)
     outF_array.close()
     # remove zipped array file
-    os.remove(out_path + '/native-cont-mat.array.gz')
+    os.remove(out_path + '/' + array_file +'.gz')
 
 
 class environment(object):
@@ -112,7 +112,7 @@ class environment(object):
     
     def initial_state(self, path):
         # Run MD simulation
-        self.MDsimulation(path + "%i/sim_%i_%i/" % (0, 0, 0))
+        self.MDsimulation(path)
         self.internal_step(path=path, i_episode=0)            
         return np.array(self.rmsd_state)
         
@@ -128,11 +128,16 @@ class environment(object):
         if len(self.rmsd_state) != len(self.obs_in_cluster):
             raise Exception("Shape mismatch")
          
-        reward = 0    
+        reward = 0.0    
         n = self.sim_steps/self.traj_out_freq
         for i in range(n):
-            reward += ((self.num_native_contacts[i] + self.rmsd_threshold)/(self.obs_in_cluster[i] + self.rmsd_state[i]))
-        return (self.num_dbscan_cluster*reward/n)
+	    print(self.rmsd_threshold)
+	    print(type(self.rmsd_threshold))
+	    num = float(self.num_native_contacts[i]) + self.rmsd_threshold
+	    den = float(self.obs_in_cluster[i]) + self.rmsd_state[i]
+            #reward += (float(self.num_native_contacts[i]) + self.rmsd_threshold)/(float(self.obs_in_cluster[i]) + self.rmsd_state[i])
+            reward += num/den
+	return (self.num_dbscan_cluster*reward/n)
     
     def step(self, action, path, i_episode):
         # Take action
@@ -140,7 +145,7 @@ class environment(object):
         self.rmsd_threshold = action
         self.MDsimulation(path, self.dcd_file, self.initial_pdb[0])
         self.internal_step(path, i_episode)
-        return (np.array(self.rmsd_state), reward(), len(self.pdb_stack) == 0) 
+        return (np.array(self.rmsd_state), self.reward(), len(self.pdb_stack) == 0) 
         
     
     def MDsimulation(self, path, out_dcd_file=None, pdb_in=None, 
@@ -185,14 +190,13 @@ class environment(object):
             
     def internal_step(self, path, i_episode):
         # Calculate contact matrix
-	path_1 = path + "%i/sim_%i_%i/" % (i_episode, 0, i_episode) 
-        cm = ExtractNativeContact(path_1, self.pdb_file, self.dcd_file)
+        cm = ExtractNativeContact(path, self.pdb_file, self.dcd_file)
         cm.generate_contact_matrix()
         
         # Pass contact matrix through CVAE and retrieve encoded_data
-        cvae = CVAE(path=path_1, sep_train=0, sep_test=0, sep_pred=1, f_traj=self.sim_steps/self.traj_out_freq)
-        cvae.load_contact_matrix(path_1 + "native-contact/data/cont-mat.dat",
-                                 path_1 + "native-contact/data/cont-mat.array")
+        cvae = CVAE(path=path, sep_train=0, sep_test=0, sep_pred=1, f_traj=self.sim_steps/self.traj_out_freq)
+        cvae.load_contact_matrix(path + "native-contact/data/cont-mat.dat",
+                                 path + "native-contact/data/cont-mat.array")
         cvae.compile()
         cvae.load_weights(self.cvae_weights_path)
         encoded_data = cvae.encode_pred()
@@ -201,7 +205,7 @@ class environment(object):
         # Calculate rmsd values for each PDB file sampled.
         self.rmsd_state = []
         for i in range(self.sim_steps/self.traj_out_freq):
-            path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i_episode, i_episode, 0, i)
+            path_1 = path + "/pdb_data/output-%i.pdb" % i
             u = mdanal.Universe(path_1)
             R = RMSD(u, self.native_protein)
             R.run()
@@ -210,17 +214,22 @@ class environment(object):
         # Calculate number of native contacts for state
         self.num_native_contacts = []
         # Build native contact matrix
-        calc_native_contact(native_pdb=self.native_pdb,
-                            out_path= './results/final_output')
+	if i_episode == 0:
+            calc_native_contact(native_pdb=self.native_pdb,
+                            	out_path='./results/final_output',
+				dat_file='native-cont-mat.dat',
+				array_file='native-cont-mat.array')
+	else:
+	    calc_native_contact(native_pdb=self.native_pdb,
+                                out_path='./results/final_output')
         
-        path_1 = path + "%i/sim_%i_%i/" % (i_episode, 0, i_episode)
         fin = open('./results/final_output/native-cont-mat.array', "r")
         native_cont_mat = fin.read()
         fin.close()
         native_cont_mat = np.fromstring(native_cont_mat, dtype='float32', sep=' ')
         n = int(sqrt(native_cont_mat.shape[0]))
         for i in range(self.sim_steps/self.traj_out_freq):
-            fin = open(path_1 + "native-contact/raw/cont-mat_%i.array" % i)
+            fin = open(path + "native-contact/raw/cont-mat_%i.array" % i)
             ith_cont_mat = fin.read()
             fin.close()
             ith_cont_mat = np.fromstring(ith_cont_mat, dtype='float32', sep=' ')
@@ -252,7 +261,7 @@ class environment(object):
             path_to_pdb = []
             rmsd_values = []
             for ind in indices:
-                path_1 = path + "%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i_episode, i_episode, 0, ind)
+                path_1 = path + "/pdb_data/output-%i.pdb" % ind
                 # For DBSCAN outliers
                 if cluster == -1:
                     if self.rmsd_state[ind] < self.rmsd_threshold:
