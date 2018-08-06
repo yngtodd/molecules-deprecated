@@ -76,8 +76,9 @@ def calc_native_contact(native_pdb, out_path, dat_file='cont-mat.dat', array_fil
 
 
 class environment(object):
-    def __init__(self, cvae_weights_path, sim_steps=20000, traj_out_freq=100, native_pdb=None):
+    def __init__(self, cvae_weights_path, sim_steps=20000, traj_out_freq=100, native_pdb=None, output_dir=None):
         #TODO: Update environment class with simulation number variable j_sim    
+        # TODO: Generalize to run multiple simulations in 1 RL step.
         # State variables
         self.rmsd_state = []
         self.num_native_contacts = []
@@ -89,10 +90,10 @@ class environment(object):
         self.pdb_file = 'output.pdb'
         # For testing purposes
         self.initial_pdb = ['/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-0.pdb',
-                                '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-1.pdb',
-                                '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-2.pdb',
-                                '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-3.pdb',
-                                '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-4.pdb']
+                            '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-1.pdb',
+                            '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-2.pdb',
+                            '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-3.pdb',
+                            '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-4.pdb']
         
         if native_pdb == None:
             # For testing purposes
@@ -106,10 +107,19 @@ class environment(object):
         self.traj_out_freq = traj_out_freq    
         self.pdb_stack = []
         self.rmsd_threshold = 10.0 # Set to random seed?
+        # TODO: Update parameters based on the size of the data set
         # DBSCAN params
         self.d_eps = 0.03
         self.d_min_samples = 4 #10
-    
+        if not os.path.exists(output_dir):
+            raise Exception("Path " + str(output_dir) + " does not exist!")
+        self.output_dir = output_dir
+        
+        calc_native_contact(native_pdb=self.native_pdb,
+                            out_path=self.output_dir + '/results/final_output',
+                            dat_file='native-cont-mat.dat',
+                            array_file='native-cont-mat.array')
+
     def initial_state(self, path):
         # Run MD simulation
         self.MDsimulation(path)
@@ -141,9 +151,9 @@ class environment(object):
             print('float(self.obs_in_cluster[i]):', float(self.obs_in_cluster[i]))
             print('self.rmsd_state[i]:', self.rmsd_state[i])
             reward += num/den
-       if self.num_dbscan_clusters < 0:
+        if self.num_dbscan_clusters < 0:
             print('obs less than 0:', self.num_dbscan_clusters)
-       return (self.num_dbscan_clusters*reward/n)
+        return (self.num_dbscan_clusters*reward/n)
     
     def step(self, action, path, i_episode):
         # Take action
@@ -211,7 +221,7 @@ class environment(object):
         cvae.compile()
         cvae.load_weights(self.cvae_weights_path)
         encoded_data = cvae.encode_pred()
-        np.save("./results/final_output/intermediate_data/encoded_data_rl_%i.npy" % i_episode, encoded_data)
+        np.save(self.output_dir + "/results/final_output/intermediate_data/encoded_data_rl_%i.npy" % i_episode, encoded_data)
         
         # Calculate rmsd values for each PDB file sampled.
         self.rmsd_state = []
@@ -225,16 +235,16 @@ class environment(object):
         # Calculate number of native contacts for state
         self.num_native_contacts = []
         # Build native contact matrix
-        if i_episode == 0:
-            calc_native_contact(native_pdb=self.native_pdb,
-                                out_path='./results/final_output',
-                                dat_file='native-cont-mat.dat',
-                                array_file='native-cont-mat.array')
-        else:
-            calc_native_contact(native_pdb=self.native_pdb,
-                                out_path='./results/final_output')
+        #if i_episode == 0:
+        #    calc_native_contact(native_pdb=self.native_pdb,
+        #                        out_path='./results/final_output',
+        #                        dat_file='native-cont-mat.dat',
+        #                        array_file='native-cont-mat.array')
+        #else:
+        #    calc_native_contact(native_pdb=self.native_pdb,
+        #                        out_path=path + "native-contact/raw")
         
-        fin = open('./results/final_output/native-cont-mat.array', "r")
+        fin = open(self.output_dir + '/results/final_output/native-cont-mat.array', "r")
         native_cont_mat = fin.read()
         fin.close()
         native_cont_mat = np.fromstring(native_cont_mat, dtype='float32', sep=' ')

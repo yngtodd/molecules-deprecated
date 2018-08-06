@@ -54,29 +54,33 @@ class Policy(nn.Module):
 
     
 class reinforce(object):
-    def __init__(self, sim_steps=20000, traj_out_freq=100):
+    def __init__(self, sim_steps=20000, traj_out_freq=100, episodes=20, output_dir=None):
         # For reproducibility to initialize starting weights
         torch.manual_seed(459)
         self.sim_steps = sim_steps
         self.traj_out_freq = traj_out_freq
+        self.episodes = episodes
         self.policy = Policy(input_dim=sim_steps/traj_out_freq)
         self.policy.apply(init_weights)
         self.optimizer = optim.SGD(self.policy.parameters(), lr=1e-8)
         # Randomly choose an eps to normalize rewards
         self.eps = np.finfo(np.float32).eps.item()
-        self.env = environment(cvae_weights_path="../model_150.dms",
-                               sim_steps=self.sim_steps,
-                               traj_out_freq=self.traj_out_freq)
-        
+        if not os.path.exists(output_dir):
+            raise Exception("Path " + str(output_dir) + " does not exist!")
+        self.output_dir = output_dir
         
         # Build initial directories
-        if not os.path.exists("./results"):
-            os.mkdir("./results", 0755)
-        if not os.path.exists("./results/final_output"):
-            os.mkdir("./results/final_output")
-        if not os.path.exists("./results/final_output/intermediate_data"):
-            os.mkdir("./results/final_output/intermediate_data")
-            
+        if not os.path.exists(self.output_dir + "/results"):
+            os.mkdir(self.output_dir + "/results", 0755)
+        if not os.path.exists(self.output_dir + "/results/final_output"):
+            os.mkdir(self.output_dir + "/results/final_output")
+        if not os.path.exists(self.output_dir + "/results/final_output/intermediate_data"):
+            os.mkdir(self.output_dir + "/results/final_output/intermediate_data")
+
+        self.env = environment(cvae_weights_path="../model_150.dms",
+                               sim_steps=self.sim_steps,
+                               traj_out_freq=self.traj_out_freq,
+                               output_dir=self.output_dir)
         
     def select_action(self, state):
         # TODO: ask about Todd about state variable
@@ -125,7 +129,7 @@ class reinforce(object):
         del self.policy.saved_log_probs_magnitude[:]
 
     def main(self):
-        path = "./results/iteration_rl_"
+        path = self.output_dir + "/results/iteration_rl_"
         if not os.path.exists(path + "%i" % 0):
             os.mkdir(path + "%i" % 0, 0755)
         path_1 = path + "%i/sim_%i_%i/" % (0,0,0)
@@ -157,12 +161,12 @@ class reinforce(object):
                 self.policy.rewards.append(reward)
                 if done:
                     break
-            if j_sim < 2:
+            if (j_sim < 2) or i_episode == self.episodes:
                 break
 
             for name, param in self.policy.named_parameters():
                 if param.requires_grad:
-                print('Before finish name param.data:',name, param.data)
+                    print('Before finish name param.data:',name, param.data)
             self.finish_episode()
             print('After finish self.policy.parameters():', self.policy.parameters())
             for name, param in self.policy.named_parameters():
@@ -172,6 +176,6 @@ class reinforce(object):
         
 
 
-if __name__ == '__main__':
-    ren = reinforce()
-    ren.main()
+#if __name__ == '__main__':
+#    ren = reinforce#()
+#    ren.main()
