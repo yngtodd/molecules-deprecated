@@ -100,15 +100,15 @@ class environment(object):
         else:
             self.native_pdb = native_pdb
         self.native_protein = mdanal.Universe(self.native_pdb)
-	 
-	self.cvae_weights_path = cvae_weights_path
-	self.sim_steps = sim_steps
-	self.traj_out_freq = traj_out_freq    
+ 
+        self.cvae_weights_path = cvae_weights_path
+        self.sim_steps = sim_steps
+        self.traj_out_freq = traj_out_freq    
         self.pdb_stack = []
         self.rmsd_threshold = 10.0 # Set to random seed?
         # DBSCAN params
-	self.d_eps = 0.03
-	self.d_min_samples = 4 #10
+        self.d_eps = 0.03
+        self.d_min_samples = 4 #10
     
     def initial_state(self, path):
         # Run MD simulation
