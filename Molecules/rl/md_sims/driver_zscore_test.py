@@ -6,7 +6,7 @@ from simtk.openmm import *
 from simtk.unit import *
 from sys import stdout
 import sys
-sys.path.append('../')
+sys.path.append('../../')
 from extract_native_contact.extract_native_contact import ExtractNativeContact
 from vae_conv_train_load.cvae_api import CVAE
 
@@ -111,7 +111,7 @@ def get_cluster_indices(labels, cluster=-1):
 
 class RL(object):
 
-    def __init__(self, cvae_weights_path, iterations=10, sim_num=10, sim_steps=20000, traj_out_freq=100, native_pdb=None, initial_pdb=None):
+    def __init__(self, cvae_weights_path, output_dir=None, iterations=10, sim_num=10, sim_steps=20000, traj_out_freq=100, native_pdb=None, initial_pdb=None):
 	if initial_pdb == None:
 	     # For testing purposes
 	     self.initial_pdb = ['/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-0.pdb',
@@ -139,12 +139,16 @@ class RL(object):
             raise Exception("Path " + str(cvae_weights_path) + " does not exist!")
         self.cvae_weights_path = cvae_weights_path
 
-	if not os.path.exists("./results"):
-            os.mkdir("./results", 0755)
-	if not os.path.exists("./results/final_output"):
-            os.mkdir("./results/final_output")
-	if not os.path.exists("./results/final_output/intermediate_data"):
-            os.mkdir("./results/final_output/intermediate_data")
+	if not os.path.exists(output_dir):
+	    raise Exception("Path " + str(output_dir) + " does not exist!")
+	self.output_dir = output_dir
+
+	if not os.path.exists(self.output_dir + "/results"):
+            os.mkdir(self.output_dir + "/results", 0755)
+	if not os.path.exists(self.output_dir +"/results/final_output"):
+            os.mkdir(self.output_dir + "/results/final_output")
+	if not os.path.exists(self.output_dir + "/results/final_output/intermediate_data"):
+            os.mkdir(self.output_dir + "/results/final_output/intermediate_data")
     
     def run_simulation(self, path, out_dcd_file, pdb_in=None, initial_rl_loop=False, ff='amber14-all.xml', water_model='amber14/tip3pfb.xml'):
         if not os.path.exists(path):
@@ -196,7 +200,7 @@ class RL(object):
 	rmsd_threshold = 5.0
 
 	for i in range(0, self.iterations):
-	    path = "./results/iteration_rl_"
+	    path = self.output_dir + "/results/iteration_rl_"
 	    if not os.path.exists(path + "%i" % i):
             	os.mkdir(path + "%i" % i, 0755)
 	    for j in range(0, self.sim_num):
@@ -270,7 +274,7 @@ class RL(object):
 	    total_data = np.array(total_data)
 	    total_data = np.reshape(total_data, (total_data.shape[0] * total_data.shape[1], total_data.shape[-1]))
 	    print("total_data shape:", total_data.shape)
-	    np.save("./results/final_output/intermediate_data/encoded_data_rl_%i.npy" % i, np.array(total_data))
+	    np.save(self.output_dir + "/results/final_output/intermediate_data/encoded_data_rl_%i.npy" % i, np.array(total_data))
 	     
 	    #int_encoded_data = []
 	    #for dataset in total_data:
@@ -329,7 +333,8 @@ class RL(object):
        
             print("PDB files left to investigate:", len(pdb_stack))
 	    # Base line for RL
-	    rmsd_threshold -= 0.40
+	    if rmsd_threshold > 0.50:
+	        rmsd_threshold -= 0.40
 	#END for     
 	
 	
@@ -338,7 +343,7 @@ class RL(object):
         for i in range(0, self.iterations):
 	    for j in range(0, self.sim_num):   
             	for k in range(0, self.sim_steps/self.traj_out_freq):
-		    path = "./results/iteration_rl_%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i, i, j, k) 
+		    path = self.output_dir + "/results/iteration_rl_%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i, i, j, k) 
 	            u = mdanal.Universe(path)
                     R = RMSD(u, self.native_protein)
                     R.run()
@@ -350,11 +355,11 @@ class RL(object):
 	#all_encoded_data = np.reshape(all_encoded_data, (all_encoded_data.shape[0] * all_encoded_data.shape[1], all_encoded_data.shape[-1]))
 	#np.save("./results/final_output/all_encoded_data.npy", all_encoded_data)
 	
-	path = "./results/final_output/intermediate_data/"
+	path = self.output_dir + "/results/final_output/intermediate_data/"
 	# Get data saved during RL iterations.
 	all_encoded_data = get_all_encoded_data(path, self.iterations - 1)
 	print("Final encoded data shape:", all_encoded_data.shape)	
-	scatter_plot(all_encoded_data, 'Latent Space (Before Clustering)', "./results/final_output/scatter.png")	
+	scatter_plot(all_encoded_data, 'Latent Space (Before Clustering)', self.output_dir + "/results/final_output/scatter.png")	
 
 	# Compute DBSCAN
         db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(all_encoded_data)
@@ -364,12 +369,12 @@ class RL(object):
 	# DBSCAN cluster plot
         scatter_plot(all_encoded_data, 
 		     'Latent Space (Number of Clusters: %d, Params: eps=%.2f, min_samples=%i)' % (n_clusters_, d_eps, d_min_samples),
-		     "./results/final_output/dbscan_clusters.png", color=db.labels_)
+		     self.output_dir + "/results/final_output/dbscan_clusters.png", color=db.labels_)
          
 	# RMSD to native state plot
 	scatter_plot_rmsd(all_encoded_data, 
 			  "Final Latent Space", 
-			  './results/final_output/rmsd_native_clusters.png',
+			  self.output_dir + '/results/final_output/rmsd_native_clusters.png',
 			  rmsd_values)	
 	# ALT: Could load full encoded_data and then set int_encoded_data to portions of it each loop iteration.
 	for i in range(0, self.iterations):
@@ -397,5 +402,6 @@ class RL(object):
 	print("PDB files left to investigate:", len(pdb_stack))
 	    
 # Script for testing
-rl = RL(cvae_weights_path="../model_150.dms", iterations=10, sim_num=5)
-rl.execute()
+#rl = RL(cvae_weights_path="../../model_150.dms", iterations=25, sim_num=5)
+#rl.execute()
+#print("Finished Program")

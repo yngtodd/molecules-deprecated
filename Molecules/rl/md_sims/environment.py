@@ -77,7 +77,7 @@ def calc_native_contact(native_pdb, out_path, dat_file='cont-mat.dat', array_fil
 
 class environment(object):
     def __init__(self, cvae_weights_path, sim_steps=20000, traj_out_freq=100, native_pdb=None):
-        
+    	# TODO: Update environment class with simulation number variable j_sim    
         # State variables
         self.rmsd_state = []
         self.num_native_contacts = []
