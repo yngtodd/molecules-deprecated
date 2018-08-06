@@ -132,6 +132,7 @@ class RL(object):
 	self.sim_num = sim_num
         self.sim_steps = sim_steps
 	self.traj_out_freq = traj_out_freq
+	self.rmsd_values = [None]*self.iterations*self.sim_num*(self.sim_steps/self.traj_out_freq)
 
 	if len(self.initial_pdb) < self.sim_num:
             raise Exception("PDB mismatch. sim_num must match number of initial pdb files given.")
@@ -294,7 +295,7 @@ class RL(object):
 		print("Current cluster:", cluster)
 	        indices = get_cluster_indices(labels=db.labels_, cluster=cluster)
 		print("indices length:", len(indices))
-		rmsd_values = []
+		rmsd_values_intermediate = []
 		path_to_pdb = []
 		# TODO TAke out error checking.
 	        for ind in indices:
@@ -304,6 +305,7 @@ class RL(object):
                     u = mdanal.Universe(path_1)
                     R = RMSD(u, self.native_protein)
 		    R.run()
+		    self.rmsd_values[i*self.sim_num*(self.sim_steps/self.traj_out_freq) + ind] = R.rmsd[0,2]
 		    # For DBSCAN outliers
 		    if cluster == -1:
 			if R.rmsd[0,2] < rmsd_threshold:
@@ -313,11 +315,11 @@ class RL(object):
                             pdb_stack.append(path_1)
 		    # For RMSD outliers within DBSCAN clusters
 		    else:
-                    	rmsd_values.append(R.rmsd[0,2])
+                    	rmsd_values_intermediate.append(R.rmsd[0,2])
 		    	path_to_pdb.append((path_1, pdb_ind))
 		# For RMSD outliers within DBSCAN clusters
 		if cluster != -1:
-		    rmsd_array = np.array(rmsd_values)
+		    rmsd_array = np.array(rmsd_values_intermediate)
 		    rmsd_zscores = stats.zscore(rmsd_array)
 		    print("rmsd_values:", rmsd_array.shape)
 		    print("rmsd_zscores:", rmsd_zscores.shape)
@@ -327,7 +329,7 @@ class RL(object):
 			# Assuming Normal Distribution of RMSD values because 
 			# CVAE yields normally distributed clusters.
 		        if zscore <= -3:
-			    print("RMSD to native contact for clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values[ind])
+			    print("RMSD to native contact for clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values_intermediate[ind])
 			    pdb_stack.append(path_to_pdb[ind][0]) 
 		        ind += 1
        
@@ -339,16 +341,16 @@ class RL(object):
 	
 	
 	# Paint with RMSD to native state
-        rmsd_values = []
-        for i in range(0, self.iterations):
-	    for j in range(0, self.sim_num):   
-            	for k in range(0, self.sim_steps/self.traj_out_freq):
-		    path = self.output_dir + "/results/iteration_rl_%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i, i, j, k) 
-	            u = mdanal.Universe(path)
-                    R = RMSD(u, self.native_protein)
-                    R.run()
-                    rmsd_values.append(R.rmsd[0,2])
-	#rmsd_array = np.array(rmsd_values)
+        #rmsd_values = []
+        #for i in range(0, self.iterations):
+	#    for j in range(0, self.sim_num):   
+        #    	for k in range(0, self.sim_steps/self.traj_out_freq):
+	#	    path = self.output_dir + "/results/iteration_rl_%i/sim_%i_%i/pdb_data/output-%i.pdb" % (i, i, j, k) 
+	#            u = mdanal.Universe(path)
+        #            R = RMSD(u, self.native_protein)
+        #            R.run()
+        #            rmsd_values.append(R.rmsd[0,2])
+	#rmsd_array = np.array(self.rmsd_values)
 		
      
 	#all_encoded_data = np.array(total_data[:])
@@ -375,7 +377,7 @@ class RL(object):
 	scatter_plot_rmsd(all_encoded_data, 
 			  "Final Latent Space", 
 			  self.output_dir + '/results/final_output/rmsd_native_clusters.png',
-			  rmsd_values)	
+			  self.rmsd_values)	
 	# ALT: Could load full encoded_data and then set int_encoded_data to portions of it each loop iteration.
 	for i in range(0, self.iterations):
 	    print(i)
@@ -396,8 +398,8 @@ class RL(object):
                               "Intermediate Latent Space (RL Loop: %i)" % i,
                                path + "cluster_rmsd_rl_%i.png" % i,
                                rmsd_values=int_rmsd_data,
-			       vmin=min(rmsd_values),
-			       vmax=max(rmsd_values))
+			       vmin=min(self.rmsd_values),
+			       vmax=max(self.rmsd_values))
 
 	print("PDB files left to investigate:", len(pdb_stack))
 	    

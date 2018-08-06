@@ -77,7 +77,7 @@ def calc_native_contact(native_pdb, out_path, dat_file='cont-mat.dat', array_fil
 
 class environment(object):
     def __init__(self, cvae_weights_path, sim_steps=20000, traj_out_freq=100, native_pdb=None):
-    	# TODO: Update environment class with simulation number variable j_sim    
+        #TODO: Update environment class with simulation number variable j_sim    
         # State variables
         self.rmsd_state = []
         self.num_native_contacts = []
@@ -131,30 +131,30 @@ class environment(object):
         reward = 0.0    
         n = self.sim_steps/self.traj_out_freq # 200
         for i in range(n):
-	    #print('num:', num = float(self.num_native_contacts[i]) + self.rmsd_threshold)
-	    #print('den:', den = float(self.obs_in_cluster[i]) + self.rmsd_state[i])
-	    num = float(self.num_native_contacts[i]) + self.rmsd_threshold
-	    den = float(self.obs_in_cluster[i]) + self.rmsd_state[i]
+            #print('num:', num = float(self.num_native_contacts[i]) + self.rmsd_threshold)
+            #print('den:', den = float(self.obs_in_cluster[i]) + self.rmsd_state[i])
+            num = float(self.num_native_contacts[i]) + self.rmsd_threshold
+            den = float(self.obs_in_cluster[i]) + self.rmsd_state[i]
             print('num', num)
-	    print('den', den)
-	    print('float(self.num_native_contacts[i]):',float(self.num_native_contacts[i]))
-	    print('float(self.obs_in_cluster[i]):', float(self.obs_in_cluster[i]))
-	    print('self.rmsd_state[i]:', self.rmsd_state[i])
-	    reward += num/den
-	if self.num_dbscan_clusters < 0:
-	    print('obs less than 0:', self.num_dbscan_clusters)
-	return (self.num_dbscan_clusters*reward/n)
+            print('den', den)
+            print('float(self.num_native_contacts[i]):',float(self.num_native_contacts[i]))
+            print('float(self.obs_in_cluster[i]):', float(self.obs_in_cluster[i]))
+            print('self.rmsd_state[i]:', self.rmsd_state[i])
+            reward += num/den
+       if self.num_dbscan_clusters < 0:
+            print('obs less than 0:', self.num_dbscan_clusters)
+       return (self.num_dbscan_clusters*reward/n)
     
     def step(self, action, path, i_episode):
         # Take action
         #return state, reward, done
-	print("Before update:",self.rmsd_threshold)
+        print("Before update:",self.rmsd_threshold)
         self.rmsd_threshold += action
-	print("After update:",self.rmsd_threshold)
-	print("len of pdb_stack before sim:",len(self.pdb_stack))
+        print("After update:",self.rmsd_threshold)
+        print("len of pdb_stack before sim:",len(self.pdb_stack))
         self.MDsimulation(path)
         self.internal_step(path, i_episode)
-	print("len of pdb_stack After sim:",len(self.pdb_stack))
+        print("len of pdb_stack After sim:",len(self.pdb_stack))
         return (np.array(self.rmsd_state), self.reward(), len(self.pdb_stack) == 0) 
         
     
@@ -168,7 +168,7 @@ class environment(object):
         if pdb_in==None:
             if len(self.pdb_stack) == 0:
                 pdb_in = self.initial_pdb[0]
-		print("Using initial PDB")
+                print("Using initial PDB")
             else:
                 pdb_in = self.pdb_stack[-1]
                 self.pdb_stack.pop()
@@ -225,13 +225,13 @@ class environment(object):
         # Calculate number of native contacts for state
         self.num_native_contacts = []
         # Build native contact matrix
-	if i_episode == 0:
+        if i_episode == 0:
             calc_native_contact(native_pdb=self.native_pdb,
-                            	out_path='./results/final_output',
-				dat_file='native-cont-mat.dat',
-				array_file='native-cont-mat.array')
-	else:
-	    calc_native_contact(native_pdb=self.native_pdb,
+                                out_path='./results/final_output',
+                                dat_file='native-cont-mat.dat',
+                                array_file='native-cont-mat.array')
+        else:
+            calc_native_contact(native_pdb=self.native_pdb,
                                 out_path='./results/final_output')
         
         fin = open('./results/final_output/native-cont-mat.array', "r")
@@ -268,8 +268,8 @@ class environment(object):
             self.obs_in_cluster.append(labels_dict[label])
             
         for cluster in Counter(db.labels_):
-	    print('dbscan cluster:',cluster)
-	    print('dbscan clusters:',Counter(db.labels_))
+            print('dbscan cluster:',cluster)
+            print('dbscan clusters:',Counter(db.labels_))
             indices = get_cluster_indices(labels=db.labels_, cluster=cluster)
             path_to_pdb = []
             rmsd_values = []
