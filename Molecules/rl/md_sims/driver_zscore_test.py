@@ -384,7 +384,7 @@ class RL(object):
         for i in range(0, self.iterations):
             print(i)
             int_encoded_data = get_all_encoded_data(path, i)
-            int_rmsd_data = rmsd_values[:self.sim_num*(self.sim_steps/self.traj_out_freq)*(i + 1)]
+            int_rmsd_data = self.rmsd_values[:self.sim_num*(self.sim_steps/self.traj_out_freq)*(i + 1)]
             print("int_encoded_data:", len(int_encoded_data))
             print("int_rmsd_data:", len(int_rmsd_data))
             db = DBSCAN(eps=d_eps, min_samples=d_min_samples).fit(int_encoded_data)
