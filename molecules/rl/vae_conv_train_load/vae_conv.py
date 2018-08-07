@@ -246,12 +246,12 @@ class conv_variational_autoencoder(object):
         '''
         if checkpoint==True and filepath==None:
             raise Exception("Please enter a path to save the network") 
-	# OLD
+        # OLD
         #self.model.fit(data,data,batch_size,epochs=epochs,shuffle=True,
         #               validation_data=(data,data),callbacks=[self.history]);
-    	# NEW A. Brace 7/10/2018
-	    self.model.fit(data,data,batch_size,epochs=epochs,shuffle=True, 
-		       validation_data=validation_data,callbacks=[self.history]);
+        # NEW A. Brace 7/10/2018
+            self.model.fit(data,data,batch_size,epochs=epochs,shuffle=True, 
+                           validation_data=validation_data,callbacks=[self.history]);
     def save(self,filepath):
         '''
         save the model weights to a file

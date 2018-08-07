@@ -263,7 +263,7 @@ for load in range(load_start, load_end, load_step):
         ax.get_yaxis().set_visible(False);
     plt.savefig('./fig/decoded_test_%i.png' %load, dpi=600);
     plt.clf();     
-	####################################################################    
+    ####################################################################    
     print "encode image for train data";
     # encode images; 
     # project inputs on the latent space;
@@ -303,7 +303,7 @@ for load in range(load_start, load_end, load_step):
     fig.colorbar(scalarMap);
     plt.savefig('./fig/encoded_train_%i.png' %load, dpi=600);
     plt.clf();
-	####################################################################    
+    ####################################################################    
     print "encode image for test data";
     # encode images; 
     # project inputs on the latent space;
@@ -343,7 +343,7 @@ for load in range(load_start, load_end, load_step):
     fig.colorbar(scalarMap);
     plt.savefig('./fig/encoded_test_%i.png' %load, dpi=600);
     plt.clf();
-	####################################################################    
+    ####################################################################    
     print "generate image";
     # building generator; 
     # build a digit generator that can sample from the learned distribution;    
