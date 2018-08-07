@@ -38,14 +38,14 @@ def build_training_data():
     col_dim_array = col + pad_col    
     # reshape data according to the choice of flatteing
     if choice == 0:
-    	new_shape = (len(x_raw),row_dim_array,col_dim_array)  
+        new_shape = (len(x_raw),row_dim_array,col_dim_array)  
     if choice == 1:
-    	new_shape = (len(x_raw),row_dim_array*col_dim_array)
+        new_shape = (len(x_raw),row_dim_array*col_dim_array)
     add_zero = np.zeros(new_shape,dtype = x_raw.dtype)        
     if choice == 0:
-    	add_zero[0:x_raw.shape[0],0:x_raw.shape[1],0:x_raw.shape[2]] = x_raw 
+        add_zero[0:x_raw.shape[0],0:x_raw.shape[1],0:x_raw.shape[2]] = x_raw 
     if choice == 1:
-    	add_zero[0:x_raw.shape[0],0:x_raw.shape[1]] = x_raw 
+        add_zero[0:x_raw.shape[0],0:x_raw.shape[1]] = x_raw 
     x_raw = add_zero
     sep_1 = int(x_raw.shape[0]*sep_train) 
     sep_2 = int(x_raw.shape[0]*sep_test)    

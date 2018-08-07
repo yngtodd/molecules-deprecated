@@ -30,56 +30,56 @@ class Plot(object):
 
    
     def encode_images(self):
-   	    print("Encode image for train data")
-    	# encode images
-    	# project inputs on the latent space
-    	self.x_pred_encoded = np.loadtxt(self.encoded_path)
-    	#x_pred_encoded = x_pred_encoded[10000:110000]
-    	data_input = np.load(self.data_path)
-    	#data_input = data_input[10000:110000]
-    	label = data_input.sum(axis=1)
-    	label = np.reshape(label, (len(label), 1))
-    	sep_train = 0.8
-    	sep_test = 0.9    
-    	sep_pred = 1
-    	sep_1 = int(data_input.shape[0]*sep_train) 
-    	sep_2 = int(data_input.shape[0]*sep_test)    
-    	sep_3 = int(data_input.shape[0]*sep_pred) 
-    	y_train_0 = label[:sep_1,0]
-    	self.y_train_2 = label[:sep_1,0]
-    	y_test_0 = label[sep_1:sep_2,0]
-    	y_test_2 = label[sep_1:sep_2,0]
-    	y_pred_0 = label[sep_2:sep_3,0]
-    	y_pred_2 = label[sep_2:sep_3,0]
+        print("Encode image for train data")
+        # encode images
+        # project inputs on the latent space
+        self.x_pred_encoded = np.loadtxt(self.encoded_path)
+        #x_pred_encoded = x_pred_encoded[10000:110000]
+        data_input = np.load(self.data_path)
+        #data_input = data_input[10000:110000]
+        label = data_input.sum(axis=1)
+        label = np.reshape(label, (len(label), 1))
+        sep_train = 0.8
+        sep_test = 0.9    
+        sep_pred = 1
+        sep_1 = int(data_input.shape[0]*sep_train) 
+        sep_2 = int(data_input.shape[0]*sep_test)    
+        sep_3 = int(data_input.shape[0]*sep_pred) 
+        y_train_0 = label[:sep_1,0]
+        self.y_train_2 = label[:sep_1,0]
+        y_test_0 = label[sep_1:sep_2,0]
+        y_test_2 = label[sep_1:sep_2,0]
+        y_pred_0 = label[sep_2:sep_3,0]
+        y_pred_2 = label[sep_2:sep_3,0]
 
     def plot(self):
-    	# plot 1: 
-    	Dmax = self.y_train_2
-    	[n,s] = np.histogram(Dmax, 11) 
-    	d = np.digitize(Dmax, s)
-    	#[n,s] = np.histogram(-np.log10(Dmax), 11) 
-    	#d = np.digitize(-np.log10(Dmax), s)
-    	cmi = plt.get_cmap('jet')
-    	cNorm = mpl.colors.Normalize(vmin=min(Dmax), vmax=max(Dmax))
-    	#cNorm = mpl.colors.Normalize(vmin=140, vmax=240)
-    	scalarMap = mpl.cm.ScalarMappable(norm=cNorm, cmap=cmi)
-    	fig = plt.figure()
-    	ax = fig.add_subplot(111, projection='3d')
-    	# scatter3D requires a 1D array for x, y, and z
-    	# ravel() converts the 100x100 array into a 1x10000 array
-    	p = ax.scatter3D(np.ravel(self.x_pred_encoded[:, 0]),
+        # plot 1: 
+        Dmax = self.y_train_2
+        [n,s] = np.histogram(Dmax, 11) 
+        d = np.digitize(Dmax, s)
+        #[n,s] = np.histogram(-np.log10(Dmax), 11) 
+        #d = np.digitize(-np.log10(Dmax), s)
+        cmi = plt.get_cmap('jet')
+        cNorm = mpl.colors.Normalize(vmin=min(Dmax), vmax=max(Dmax))
+        #cNorm = mpl.colors.Normalize(vmin=140, vmax=240)
+        scalarMap = mpl.cm.ScalarMappable(norm=cNorm, cmap=cmi)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        # scatter3D requires a 1D array for x, y, and z
+        # ravel() converts the 100x100 array into a 1x10000 array
+        p = ax.scatter3D(np.ravel(self.x_pred_encoded[:, 0]),
                          np.ravel(self.x_pred_encoded[:, 1]),
                          np.ravel(self.x_pred_encoded[:, 2]), 
-                     	 marker='.', c=scalarMap.to_rgba(Dmax))
-    	ax.set_xlim3d(np.amin(np.ravel(self.x_pred_encoded[:, 0])), np.amax(np.ravel(self.x_pred_encoded[:, 0])))
-    	ax.set_ylim3d(np.amin(np.ravel(self.x_pred_encoded[:, 1])), np.amax(np.ravel(self.x_pred_encoded[:, 1])))
-    	ax.set_zlim3d(np.amin(np.ravel(self.x_pred_encoded[:, 2])), np.amax(np.ravel(self.x_pred_encoded[:, 2])))
-    	ax.set_xlabel('VAE 0')
-    	ax.set_ylabel('VAE 1')
-    	ax.set_zlabel('VAE 2')
-    	scalarMap.set_array(Dmax)
-    	fig.colorbar(scalarMap)
-    	plt.savefig('./images/encoded_train.png', dpi=600)
-    	plt.show()
-    	#plt.clf()
+                         marker='.', c=scalarMap.to_rgba(Dmax))
+        ax.set_xlim3d(np.amin(np.ravel(self.x_pred_encoded[:, 0])), np.amax(np.ravel(self.x_pred_encoded[:, 0])))
+        ax.set_ylim3d(np.amin(np.ravel(self.x_pred_encoded[:, 1])), np.amax(np.ravel(self.x_pred_encoded[:, 1])))
+        ax.set_zlim3d(np.amin(np.ravel(self.x_pred_encoded[:, 2])), np.amax(np.ravel(self.x_pred_encoded[:, 2])))
+        ax.set_xlabel('VAE 0')
+        ax.set_ylabel('VAE 1')
+        ax.set_zlabel('VAE 2')
+        scalarMap.set_array(Dmax)
+        fig.colorbar(scalarMap)
+        plt.savefig('./images/encoded_train.png', dpi=600)
+        plt.show()
+        #plt.clf()
 
