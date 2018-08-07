@@ -38,13 +38,13 @@ class ProteinData(Dataset):
         transform : callable, optional
             Optional transform to be applied on a sample.
         """
-	#with gzip.open(data, 'rb') as f:
-         #   self.data, self.labels = pickle.load(f)
-     	self.data = np.load(data)
-	self.labels = np.load(labels)
+        #with gzip.open(data, 'rb') as f:
+        #   self.data, self.labels = pickle.load(f)
+        self.data = np.load(data)
+        self.labels = np.load(labels)
         self.transform = transform
-	self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(data, label, 0.2)	
-	# 
+        self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(data, label, 0.2)
+ 
 
 
     def __len__(self):
@@ -87,8 +87,8 @@ class LogisticRegressionModel(torch.nn.Module):
 dataset = ProteinData(data="./cont-mat-data.npy", labels="./label.npy")
 train_loader = DataLoader(dataset=dataset,
                           batch_size=32,
-			  shuffle=True,
-			  num_workers=1)
+                          shuffle=True,
+                          num_workers=1)
 
 # Our Model
 model = LogisticRegressionModel()
@@ -109,31 +109,31 @@ optimizer = torch.optim.SGD(model.parameters(), lr=0.01) # lr = learning rate
 for epoch in range(500):
     for i, data in enumerate(train_loader):
         #Get the inputs
-	inputs = data['cont_matrix']
-	labels = data['label']
-	arr = inputs.numpy()
-	if(arr.shape != (32, 21, 21)):
-	    print(i, arr.shape)
-	    print(len(train_loader))
-	    #assert(False)
-	inputs = arr.reshape(32,441)
-	#inputs, labels = Variable(torch.Tensor(inputs)), Variable(torch.Tensor(labels))
-	#inn = inputs.resize_(32, 441)
+        inputs = data['cont_matrix']
+        labels = data['label']
+        arr = inputs.numpy()
+        if(arr.shape != (32, 21, 21)):
+            print(i, arr.shape)
+            print(len(train_loader))
+            #assert(False)
+        inputs = arr.reshape(32,441)
+        #inputs, labels = Variable(torch.Tensor(inputs)), Variable(torch.Tensor(labels))
+        #inn = inputs.resize_(32, 441)
         #inputs = inn.clone()
-	#inputs = torch.Tensor(inputs)
-	inputs = torch.from_numpy(inputs)
-	labels = labels.float()
-	inputs = inputs.float()
-	inputs, labels = Variable(inputs), Variable(labels)
+        #inputs = torch.Tensor(inputs)
+        inputs = torch.from_numpy(inputs)
+        labels = labels.float()
+        inputs = inputs.float()
+        inputs, labels = Variable(inputs), Variable(labels)
 
-	
+
         # Forward pass: Compute predicted y by passing x to the model
         y_pred = model(inputs)
 
         # Compute and print loss
         loss = criterion(y_pred, labels)
         print(epoch, i, loss.data[0])
-	    #code through here for test
+        #code through here for test
         # Zero gradients. perform a backward pass, and update the weights
         optimizer.zero_grad()
         loss.backward()
