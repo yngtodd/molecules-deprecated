@@ -335,7 +335,7 @@ class ENV(object):
         scatter_plot_rmsd(all_encoded_data, 
                           "Final Latent Space", 
                           './results/final_output/rmsd_native_clusters.png',
-                          rmsd_values)	
+                          rmsd_values)
         # ALT: Could load full encoded_data and then set int_encoded_data to portions of it each loop iteration.
         for i in range(0, self.iterations):
             print(i)
