@@ -143,8 +143,9 @@ class reinforce(object):
             # Create Directories
             if not os.path.exists(path + "%i" % i_episode):
                 os.mkdir(path + "%i" % i_episode, 0755)
-            for j_sim in range(3):
-                path_1 = path + "%i/sim_%i_%i/" % (i_episode, i_episode, j_sim)
+            # TODO: Set 3 as a user defined variable
+            for j_cycle in range(3):
+                path_1 = path + "%i/sim_%i_%i/" % (i_episode, i_episode, j_cycle)
                 if not os.path.exists(path_1):
                     os.mkdir(path_1, 0755)
                     os.mkdir(path_1 + "/cluster", 0755)
@@ -153,7 +154,7 @@ class reinforce(object):
                 print("state shape before select_action:", state.shape)
                 action = self.select_action(state)
                 print("state shape after select_action:", state.shape)
-                state, reward, done = self.env.step(action, path_1, i_episode)
+                state, reward, done = self.env.step(action, path_1, i_episode, j_cycle)
                 print('\n\n\n\n')
                 print('reward:',reward)
                 print('\n\n\n\n')
@@ -161,7 +162,7 @@ class reinforce(object):
                 self.policy.rewards.append(reward)
                 if done:
                     break
-            if (j_sim < 2) or i_episode == self.episodes:
+            if (j_cycle < 2) or i_episode == self.episodes:
                 break
 
             for name, param in self.policy.named_parameters():
@@ -172,7 +173,12 @@ class reinforce(object):
             for name, param in self.policy.named_parameters():
                 if param.requires_grad:
                     print('After finish name param.data:',name, param.data)
-        
+        for i in range(1, i_episode + 1):
+             print("print %i episode" %i) 
+             # TODO: update 3 to user defined variable
+             for j in range(3):       
+                 self.env.plot_intermediate_episode(self.env.output_dir + "/results/final_output/intermediate_data/", 
+                                                    self.env.output_dir + "/results/final_output/", i, j, 'Intermediate')
         
 
 

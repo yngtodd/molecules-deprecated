@@ -17,7 +17,7 @@ from sklearn.cluster import DBSCAN
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 from collections import Counter
-
+import matplotlib as mpl
 # For reward function
 import MDAnalysis as mdanal
 from MDAnalysis.analysis.rms import RMSD
@@ -26,6 +26,61 @@ from scipy import stats
 # For calc_native_contact()
 from MDAnalysis.analysis import contacts
 import gzip
+
+def scatter_plot_rmsd(data, title, save_path, rmsd_values, vmin=None, vmax=None):
+    [n,s] = np.histogram(rmsd_values, 11)
+    d = np.digitize(rmsd_values, s)
+    cmi = plt.get_cmap('jet')
+    if vmin == None and vmax == None:
+        cNorm = mpl.colors.Normalize(vmin=min(rmsd_values), vmax=max(rmsd_values))
+    else:
+        cNorm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+    scalarMap = mpl.cm.ScalarMappable(norm=cNorm, cmap=cmi)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    p = ax.scatter3D(np.ravel(data[:, 0]),
+                     np.ravel(data[:, 1]),
+                     np.ravel(data[:, 2]),
+                     marker='o', c=scalarMap.to_rgba(rmsd_values))
+    ax.set_xlim3d(np.amin(np.ravel(data[:, 0])), np.amax(np.ravel(data[:, 0])))
+    ax.set_ylim3d(np.amin(np.ravel(data[:, 1])), np.amax(np.ravel(data[:, 1])))
+    ax.set_zlim3d(np.amin(np.ravel(data[:, 2])), np.amax(np.ravel(data[:, 2])))
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    scalarMap.set_array(rmsd_values)
+    fig.colorbar(scalarMap)
+    plt.title(title)
+    plt.savefig(save_path, dpi=600)
+    plt.cla()
+    plt.close(fig)
+
+def scatter_plot(data, title, save_path, color='b'):
+    """
+    data : numpy array
+        must be of dimension (n,3).
+    title : str
+        title of desired plot.
+    save_path : str
+        file name of save location desired. Containing directory must
+        already exist.
+    color : str of list
+        color scheme desired.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    plt.title(title)
+    plt.xlim(np.amin(data[:, 0]), np.amax(data[:, 0]))
+    plt.ylim(np.amin(data[:, 1]), np.amax(data[:, 1]))
+    ax.set_zlim(np.amin(data[:, 2]), np.amax(data[:, 2]))
+    ax.scatter(data[:, 0], data[:, 1], data[:, 2], c=color, marker='o')
+    plt.savefig(save_path)
+    plt.cla()
+    plt.close(fig)
+
 
 def get_cluster_indices(labels, cluster=-1):
     """
@@ -39,6 +94,28 @@ def get_cluster_indices(labels, cluster=-1):
         if j == cluster:
             indices.append(i)
     return indices
+
+
+def get_all_encoded_data(dir_path, episode, j_num, name):
+    data = []
+    if j_num == 0 and episode == 1:
+        data.append(np.load(dir_path + "/%s_%i_%i.npy" % (name, episode, j_num)))
+        #print("num = 0 data[0].shape = ",data[0].shape) 
+        #print("returning data[0] = ", data[0])
+        return data[0]
+    for i in range(1, episode + 1):
+        for j in range(j_num + 1):
+            data.append(np.load(dir_path + "/%s_%i_%i.npy" % (name, i,j)))
+        #print(data[0], "hello")
+    #print("data len", len(data))
+    #print("data[0].shape = ", data[0].shape)
+    data = np.array(data)
+    #print(data.shape)
+    if name[0] == 'e':
+        return np.reshape(data, (data.shape[0] * data.shape[1], data.shape[-1]))
+    elif name[0] == 'r':
+        return np.reshape(data, (data.shape[0] * data.shape[1]))
+
 
 def calc_native_contact(native_pdb, out_path, dat_file='cont-mat.dat', array_file='cont-mat.array'):
     u_native = mdanal.Universe(native_pdb)
@@ -85,6 +162,8 @@ class environment(object):
         self.obs_in_cluster = []
         self.num_dbscan_clusters = 1
         
+        self.rmsd_max = -100000
+        self.rmsd_min = 100000
         # IO variables
         self.dcd_file = 'output-1.dcd'
         self.pdb_file = 'output.pdb'
@@ -123,7 +202,7 @@ class environment(object):
     def initial_state(self, path):
         # Run MD simulation
         self.MDsimulation(path)
-        self.internal_step(path=path, i_episode=0)            
+        self.internal_step(path=path, i_episode=1, j_cycle=0)            
         return np.array(self.rmsd_state)
         
     
@@ -155,7 +234,7 @@ class environment(object):
             print('obs less than 0:', self.num_dbscan_clusters)
         return (self.num_dbscan_clusters*reward/n)
     
-    def step(self, action, path, i_episode):
+    def step(self, action, path, i_episode, j_cycle):
         # Take action
         #return state, reward, done
         print("Before update:",self.rmsd_threshold)
@@ -163,8 +242,9 @@ class environment(object):
         print("After update:",self.rmsd_threshold)
         print("len of pdb_stack before sim:",len(self.pdb_stack))
         self.MDsimulation(path)
-        self.internal_step(path, i_episode)
+        self.internal_step(path, i_episode, j_cycle=j_cycle)
         print("len of pdb_stack After sim:",len(self.pdb_stack))
+       # plot_entire_episode("/results/final_output/intermediate_data/encoded_data_rl_%i_%i.npy" % (i_episode, j_cycle), self.output_dir + "/results/final_output/")
         return (np.array(self.rmsd_state), self.reward(), len(self.pdb_stack) == 0) 
         
     
@@ -209,7 +289,7 @@ class environment(object):
         fout.write(final_pdb_data)
         fout.close()
             
-    def internal_step(self, path, i_episode):
+    def internal_step(self, path, i_episode, j_cycle):
         # Calculate contact matrix
         cm = ExtractNativeContact(path, self.pdb_file, self.dcd_file)
         cm.generate_contact_matrix()
@@ -221,7 +301,8 @@ class environment(object):
         cvae.compile()
         cvae.load_weights(self.cvae_weights_path)
         encoded_data = cvae.encode_pred()
-        np.save(self.output_dir + "/results/final_output/intermediate_data/encoded_data_rl_%i.npy" % i_episode, encoded_data)
+        np.save(self.output_dir + "/results/final_output/intermediate_data/encoded_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
+                encoded_data)
         
         # Calculate rmsd values for each PDB file sampled.
         self.rmsd_state = []
@@ -231,7 +312,17 @@ class environment(object):
             R = RMSD(u, self.native_protein)
             R.run()
             self.rmsd_state.append(R.rmsd[0,2])
-       
+
+        if(max(self.rmsd_state) > self.rmsd_max):
+            self.rmsd_max = max(self.rmsd_state)
+
+        if(min(self.rmsd_state) < self.rmsd_min):
+            self.rmsd_min = min(self.rmsd_state)
+
+
+
+        np.save(self.output_dir + "/results/final_output/intermediate_data/rmsd_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
+                self.rmsd_state)       
         # Calculate number of native contacts for state
         self.num_native_contacts = []
         # Build native contact matrix
@@ -309,4 +400,48 @@ class environment(object):
                         print("RMSD to native contact for DBSCAN clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values[ind])
                         self.pdb_stack.append(path_to_pdb[ind][0]) 
                     ind += 1
-            
+
+
+
+     '''
+      EFFECTS: Plots DBscan clusters based on cluster value, and then by rmsd. Plots include all previous simulation data, if any, but no data from episodes/cycles occuring later.  
+
+      Parameters: 
+         - in_path: string
+           path where rmsd_data.npy and encodeded_data.npy are stored
+         - out_path: string
+           path to folder the plots should be saved to
+         - episode: int
+           which episode should be plotted (indexed from 1)
+         - j_cycle: int
+           which cycle should be plotted (indexed from 0)
+         - title: string
+           appended to begin of each plot, implemented to create final vs. intermediate plot. (omit ?)
+
+       Returns: Nothing
+       Saves: Two plots in 'out_path' folder
+
+     '''
+
+
+	#TODO calculate RMSD max + min from numpy arrays, then remove this function from environment
+    def plot_intermediate_episode(self, in_path, out_path, episode, j_cycle, title):
+        int_encoded_data = get_all_encoded_data(in_path, episode, j_cycle, 'encoded_data_rl')
+        int_rmsd_data = get_all_encoded_data(in_path, episode, j_cycle, 'rmsd_data_rl')
+        print("int_encoded_data:", len(int_encoded_data))
+        print("int_rmsd_data:", len(int_rmsd_data))
+        db = DBSCAN(eps=self.d_eps, min_samples=self.d_min_samples).fit(int_encoded_data)
+        n_clusters_ = len(set(db.labels_)) - (1 if -1 in db.labels_ else 0)
+        print('Estimated number of clusters: %d' % n_clusters_)
+        print(Counter(db.labels_))
+        scatter_plot(int_encoded_data,
+                     '%s Latent Space (Clusters: %d, RL Episode: %i_%i)' % (title, n_clusters_, episode, j_cycle),
+                     out_path + "dbscan_clusters_rl_%i_%i.png" % (episode, j_cycle), 
+                     color=db.labels_)
+
+        scatter_plot_rmsd(int_encoded_data,
+                          "%s Latent Space (RL Episode: %i_%i)" % (title, episode, j_cycle),
+                           out_path + "cluster_rmsd_rl_%i_%i.png" % (episode, j_cycle),
+                           rmsd_values=int_rmsd_data,
+                           vmin=self.rmsd_min,
+                           vmax=self.rmsd_max)
