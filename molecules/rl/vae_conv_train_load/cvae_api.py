@@ -38,8 +38,8 @@ class CVAE(object):
 
         # TODO: Add path variable to allow output to any directory. Default to "./".
         # TODO: Add exception handling for each input and add doc string.
-	# TODO: Add automatic scaling for odd dimension matrix
-	# TODO: Add automatice n_traj and f_traj calculation
+        # TODO: Add automatic scaling for odd dimension matrix
+        # TODO: Add automatice n_traj and f_traj calculation
         if not os.path.exists(path):
             raise Exception("Path: " + str(path) + " does not exist!")
 
@@ -195,19 +195,19 @@ class CVAE(object):
         print("Loading data")
         
         # Normalizing input image matrix
-	if len(x_train_raw) != 0:
+        if len(x_train_raw) != 0:
             X_train = x_train_raw.astype('float32') / np.amax(x_train_raw)
         else:
-	    X_train = x_train_raw.astype('float32')
-	if len(x_test_raw) != 0:
-	    X_test = x_test_raw.astype('float32') / np.amax(x_test_raw)
-	else:
-	    X_test = x_test_raw.astype('float32')
+            X_train = x_train_raw.astype('float32')
+        if len(x_test_raw) != 0:
+            X_test = x_test_raw.astype('float32') / np.amax(x_test_raw)
+        else:
+            X_test = x_test_raw.astype('float32')
         if len(x_pred_raw) != 0:
             X_pred = x_pred_raw.astype('float32') / np.amax(x_pred_raw)
         else:
-	    X_pred = x_pred_raw.astype('float32')
-	print("Shape of data loaded:", "Train:", np.shape(X_train), "Test:", np.shape(X_test), "Prediction:", np.shape(X_pred))
+            X_pred = x_pred_raw.astype('float32')
+        print("Shape of data loaded:", "Train:", np.shape(X_train), "Test:", np.shape(X_test), "Prediction:", np.shape(X_pred))
 
         # TODO: Reshape prediction shape X_pred ? Ask Sindhu
         # Reshape to 4d tensors
@@ -397,7 +397,7 @@ class CVAE(object):
         return self.autoencoder.return_embeddings(self.X_pred)
 
     def summary(self):
-	self.autoencoder.summary()    
+        self.autoencoder.summary()    
 
     def analyze_all(self):
         """
@@ -497,7 +497,7 @@ class CVAE(object):
 
             plt.savefig(self.path + '/fig/decoded_test_%i.png' %load, dpi=600)
             plt.clf()  
-	           
+           
             print("Encode image for train data")
             # Encode images
             # 4) Project inputs on the latent space
@@ -572,7 +572,7 @@ class CVAE(object):
             fig.colorbar(scalarMap)
             plt.savefig(self.path + '/fig/encoded_test_%i.png' %load, dpi=600)
             plt.clf()
-	          
+          
             print("Generate image")
             # Building generator
             # Build a digit generator that can sample from the learned distribution  
