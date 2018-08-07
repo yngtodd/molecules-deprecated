@@ -10,7 +10,7 @@ class Molecules(object):
     def build_directories(self):
         """
         Builds directories "./images/", "./input_data/", "./output_data/",
-	    "./saved_models/", "./raw_data/"
+        "./saved_models/", "./raw_data/"
         """
         print("Building Directories...")
 
