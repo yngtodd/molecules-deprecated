@@ -2,9 +2,9 @@ import os
 from reinforce import reinforce
 
 # Define Parameters
-num_trials = 4 # Runs 5 different RL batches
+num_trials = 1 # Runs 5 different RL batches
 main_dir = "./RL_testing/" #Main directory where all files are stored
-episodes = 25
+episodes = 3
 sim_steps = 20000
 traj_out_freq = 100
 #sim_num = 5

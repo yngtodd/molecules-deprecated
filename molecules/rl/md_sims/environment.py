@@ -288,11 +288,28 @@ class environment(object):
         fout = open(path + "/output.pdb", 'w')
         fout.write(final_pdb_data)
         fout.close()
+
+    def extract_contact_matrix(self, path):
+        """
+        EFFECTS: Generates contact matrices using ExtractNativeContact and outputs
+                 the cont-mat.array and cont-mat.dat files in the native-contact/data
+                 directory.
+        
+        Parameters:
+          path : string
+              path of the directory containing the pdb_file and dcd_file
+
+        Returns: Nothing
+
+        Saves: cont-mat.array and cont-mat.dat in path/native-contact/data  
+
+        """
+        cm = ExtractNativeContact(path, self.pdb_file, self.dcd_file)
+        cm.generate_contact_matrix()
             
     def internal_step(self, path, i_episode, j_cycle):
         # Calculate contact matrix
-        cm = ExtractNativeContact(path, self.pdb_file, self.dcd_file)
-        cm.generate_contact_matrix()
+        self.extract_contact_matrix(path)
         
         # Pass contact matrix through CVAE and retrieve encoded_data
         cvae = CVAE(path=path, sep_train=0, sep_test=0, sep_pred=1, f_traj=self.sim_steps/self.traj_out_freq)
@@ -324,17 +341,7 @@ class environment(object):
         np.save(self.output_dir + "/results/final_output/intermediate_data/rmsd_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
                 self.rmsd_state)       
         # Calculate number of native contacts for state
-        self.num_native_contacts = []
-        # Build native contact matrix
-        #if i_episode == 0:
-        #    calc_native_contact(native_pdb=self.native_pdb,
-        #                        out_path='./results/final_output',
-        #                        dat_file='native-cont-mat.dat',
-        #                        array_file='native-cont-mat.array')
-        #else:
-        #    calc_native_contact(native_pdb=self.native_pdb,
-        #                        out_path=path + "native-contact/raw")
-        
+        self.num_native_contacts = [] 
         fin = open(self.output_dir + '/results/final_output/native-cont-mat.array', "r")
         native_cont_mat = fin.read()
         fin.close()
@@ -401,31 +408,29 @@ class environment(object):
                         self.pdb_stack.append(path_to_pdb[ind][0]) 
                     ind += 1
 
-
-
-     '''
-      EFFECTS: Plots DBscan clusters based on cluster value, and then by rmsd. Plots include all previous simulation data, if any, but no data from episodes/cycles occuring later.  
-
-      Parameters: 
-         - in_path: string
-           path where rmsd_data.npy and encodeded_data.npy are stored
-         - out_path: string
-           path to folder the plots should be saved to
-         - episode: int
-           which episode should be plotted (indexed from 1)
-         - j_cycle: int
-           which cycle should be plotted (indexed from 0)
-         - title: string
-           appended to begin of each plot, implemented to create final vs. intermediate plot. (omit ?)
-
-       Returns: Nothing
-       Saves: Two plots in 'out_path' folder
-
-     '''
-
-
-	#TODO calculate RMSD max + min from numpy arrays, then remove this function from environment
+    #TODO calculate RMSD max + min from numpy arrays, then remove this function from environment
     def plot_intermediate_episode(self, in_path, out_path, episode, j_cycle, title):
+        """
+        EFFECTS: Plots DBscan clusters based on cluster value, and then by rmsd.
+                 Plots include all previous simulation data, if any, but no data
+                 from episodes/cycles occuring later.
+
+        Parameters:
+          in_path: string
+              path where rmsd_data.npy and encodeded_data.npy are stored
+          out_path: string
+              path to folder the plots should be saved to
+          episode: int
+              which episode should be plotted (indexed from 1)
+          j_cycle: int
+              which cycle should be plotted (indexed from 0)
+          title: string
+              appended to begin of each plot, implemented to create final vs. intermediate plot. (omit ?)
+
+        Returns: Nothing
+        
+        Saves: Two plots in 'out_path' folder
+        """
         int_encoded_data = get_all_encoded_data(in_path, episode, j_cycle, 'encoded_data_rl')
         int_rmsd_data = get_all_encoded_data(in_path, episode, j_cycle, 'rmsd_data_rl')
         print("int_encoded_data:", len(int_encoded_data))
