@@ -353,7 +353,45 @@ class environment(object):
 
         if(min(self.rmsd_state) < self.rmsd_min):
             self.rmsd_min = min(self.rmsd_state)
-        
+   
+    def calc_num_native_contacts(self, path):
+        """
+        EFFECTS: First empties self.num_native_contacts then refils it with updated
+                 native contact values from the latest latent sampling.
+
+        Parameters:
+          path : string
+              path of the directory containing the pdb_data directory
+
+        Returns: Nothing
+        """    
+        self.num_native_contacts = []
+        # TODO: Move this code block to __init__ and make n, and native_cont_mat attributes
+        ##########
+        fin = open(self.output_dir + '/results/final_output/native-cont-mat.array', "r")
+        native_cont_mat = fin.read()
+        fin.close()
+        native_cont_mat = np.fromstring(native_cont_mat, dtype='float32', sep=' ')
+        n = int(sqrt(native_cont_mat.shape[0]))
+        ##########
+
+        for i in range(self.sim_steps/self.traj_out_freq):
+            fin = open(path + "native-contact/raw/cont-mat_%i.array" % i)
+            ith_cont_mat = fin.read()
+            fin.close()
+            ith_cont_mat = np.fromstring(ith_cont_mat, dtype='float32', sep=' ')
+            counter = 0
+            row = 0
+            while row < n + 2:
+                col = row + 2
+                shift = row * n
+                while col < n:
+                    if ith_cont_mat[shift + col] == native_cont_mat[shift + col]:
+                        counter += 1
+                    col += 1
+
+                row += 1
+            self.num_native_contacts.append(counter)
 
     def internal_step(self, path, i_episode, j_cycle):
         # Calculate contact matrix
@@ -374,30 +412,8 @@ class environment(object):
                 self.rmsd_state)       
 
         # Calculate number of native contacts for state
-        self.num_native_contacts = [] 
-        fin = open(self.output_dir + '/results/final_output/native-cont-mat.array', "r")
-        native_cont_mat = fin.read()
-        fin.close()
-        native_cont_mat = np.fromstring(native_cont_mat, dtype='float32', sep=' ')
-        n = int(sqrt(native_cont_mat.shape[0]))
-        for i in range(self.sim_steps/self.traj_out_freq):
-            fin = open(path + "native-contact/raw/cont-mat_%i.array" % i)
-            ith_cont_mat = fin.read()
-            fin.close()
-            ith_cont_mat = np.fromstring(ith_cont_mat, dtype='float32', sep=' ')
-            counter = 0
-            row = 0
-            while row < n + 2:
-                col = row + 2
-                shift = row * n
-                while col < n:
-                    if ith_cont_mat[shift + col] == native_cont_mat[shift + col]:
-                        counter += 1
-                    col += 1 
-                
-                row += 1
-            self.num_native_contacts.append(counter)     
-        
+        self.calc_num_native_contacts(path)
+
         # Perform DBSCAN clustering on all the data produced in the ith RL iteration.
         db = DBSCAN(eps=self.d_eps, min_samples=self.d_min_samples).fit(encoded_data)
         # Compute number of observations in the DBSCAN cluster of the ith PDB
