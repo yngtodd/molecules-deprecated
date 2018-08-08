@@ -306,18 +306,37 @@ class environment(object):
         """
         cm = ExtractNativeContact(path, self.pdb_file, self.dcd_file)
         cm.generate_contact_matrix()
-            
-    def internal_step(self, path, i_episode, j_cycle):
-        # Calculate contact matrix
-        self.extract_contact_matrix(path)
         
-        # Pass contact matrix through CVAE and retrieve encoded_data
+    def CVAE_latent_space(self, path):
+        """
+        EFFECTS: Computes CVAE generated latent space from contact matrix 
+                 stored in path/native-contact/data/cont-mat.array.
+
+        Parameters:
+          path : string
+              path of the directory containing the native-contact directory
+
+        Returns: 
+          encoded_data : numpy array 
+              numpy array with shape (sim_steps/traj_out_freq, 3)
+        """
         cvae = CVAE(path=path, sep_train=0, sep_test=0, sep_pred=1, f_traj=self.sim_steps/self.traj_out_freq)
         cvae.load_contact_matrix(path + "native-contact/data/cont-mat.dat",
                                  path + "native-contact/data/cont-mat.array")
         cvae.compile()
         cvae.load_weights(self.cvae_weights_path)
-        encoded_data = cvae.encode_pred()
+        return cvae.encode_pred() # encoded_data
+
+
+
+    def internal_step(self, path, i_episode, j_cycle):
+        # Calculate contact matrix
+        self.extract_contact_matrix(path)
+        
+        # Pass contact matrix through CVAE and retrieve encoded_data
+        encoded_data = self.CVAE_latent_space(path)
+
+        # Save encoded_data
         np.save(self.output_dir + "/results/final_output/intermediate_data/encoded_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
                 encoded_data)
         
