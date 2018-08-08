@@ -327,20 +327,19 @@ class environment(object):
         cvae.load_weights(self.cvae_weights_path)
         return cvae.encode_pred() # encoded_data
 
-
-
-    def internal_step(self, path, i_episode, j_cycle):
-        # Calculate contact matrix
-        self.extract_contact_matrix(path)
+    def calc_rmsd_values(self, path):
+        """
+        EFFECTS: First empties self.rmsd_state then refils it with updated
+                 RMSD to native state values from the latest latent sampling.
+                 Also updates self.rmsd_max and self.rmsd_min which are used
+                 for plotting.
         
-        # Pass contact matrix through CVAE and retrieve encoded_data
-        encoded_data = self.CVAE_latent_space(path)
-
-        # Save encoded_data
-        np.save(self.output_dir + "/results/final_output/intermediate_data/encoded_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
-                encoded_data)
-        
-        # Calculate rmsd values for each PDB file sampled.
+        Parameters:
+          path : string
+              path of the directory containing the pdb_data directory
+ 
+        Returns: Nothing
+        """
         self.rmsd_state = []
         for i in range(self.sim_steps/self.traj_out_freq):
             path_1 = path + "/pdb_data/output-%i.pdb" % i
@@ -354,11 +353,26 @@ class environment(object):
 
         if(min(self.rmsd_state) < self.rmsd_min):
             self.rmsd_min = min(self.rmsd_state)
+        
 
+    def internal_step(self, path, i_episode, j_cycle):
+        # Calculate contact matrix
+        self.extract_contact_matrix(path)
+        
+        # Pass contact matrix through CVAE and retrieve encoded_data
+        encoded_data = self.CVAE_latent_space(path)
 
+        # Save encoded_data for analysis
+        np.save(self.output_dir + "/results/final_output/intermediate_data/encoded_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
+                encoded_data)
+        
+        # Calculate rmsd values for each PDB file sampled.
+        self.calc_rmsd_values(path)
 
+        # Save rmsd_state for analysis
         np.save(self.output_dir + "/results/final_output/intermediate_data/rmsd_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
                 self.rmsd_state)       
+
         # Calculate number of native contacts for state
         self.num_native_contacts = [] 
         fin = open(self.output_dir + '/results/final_output/native-cont-mat.array', "r")
