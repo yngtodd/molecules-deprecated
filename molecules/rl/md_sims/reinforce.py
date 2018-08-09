@@ -144,7 +144,7 @@ class reinforce(object):
             if not os.path.exists(path + "%i" % i_episode):
                 os.mkdir(path + "%i" % i_episode, 0755)
             # TODO: Set 3 as a user defined variable
-            for j_cycle in range(3):
+            for j_cycle in range(1):
                 path_1 = path + "%i/sim_%i_%i/" % (i_episode, i_episode, j_cycle)
                 if not os.path.exists(path_1):
                     os.mkdir(path_1, 0755)
@@ -176,7 +176,7 @@ class reinforce(object):
         for i in range(1, i_episode + 1):
              print("print %i episode" %i) 
              # TODO: update 3 to user defined variable
-             for j in range(3):       
+             for j in range(1):       
                  self.env.plot_intermediate_episode(self.env.output_dir + "/results/final_output/intermediate_data/", 
                                                     self.env.output_dir + "/results/final_output/", i, j, 'Intermediate')
         

@@ -288,23 +288,94 @@ class environment(object):
         fout = open(path + "/output.pdb", 'w')
         fout.write(final_pdb_data)
         fout.close()
-            
+
     def internal_step(self, path, i_episode, j_cycle):
         # Calculate contact matrix
+        self.extract_contact_matrix(path)
+        
+        # Pass contact matrix through CVAE and retrieve encoded_data
+        encoded_data = self.CVAE_latent_space(path)
+
+        # Save encoded_data for analysis
+        np.save(self.output_dir + "/results/final_output/intermediate_data/encoded_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
+                encoded_data)
+        
+        # Calculate rmsd values for each PDB file sampled.
+        self.calc_rmsd_values(path)
+
+        # Save rmsd_state for analysis
+        np.save(self.output_dir + "/results/final_output/intermediate_data/rmsd_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
+                self.rmsd_state)       
+
+        # Calculate number of native contacts for state
+        self.calc_num_native_contacts(path)
+
+        # Perform DBSCAN clustering on all the data produced in the ith RL iteration.
+        db = DBSCAN(eps=self.d_eps, min_samples=self.d_min_samples).fit(encoded_data)
+
+        # Build dictionary of the form {cluster id : number of occurences}
+        labels_dict = Counter(db.labels_)
+
+        # Compute number of DBSCAN clusters for reward function
+        self.calc_num_dbscan_clusters(labels_dict)
+
+        # Compute number of observations in the DBSCAN cluster of the ith PDB
+        self.calc_obs_in_cluster(labels_dict, db.labels_)
+            
+        # Finds outliers in the latent space and adds them to self.pdb_stack to spawn new MD simulations    
+        self.get_outliers(path, labels_dict, db.labels_)
+
+    def extract_contact_matrix(self, path):
+        """
+        EFFECTS: Generates contact matrices using ExtractNativeContact and outputs
+                 the cont-mat.array and cont-mat.dat files in the native-contact/data
+                 directory.
+        
+        Parameters:
+          path : string
+              path of the directory containing the pdb_file and dcd_file
+
+        Returns: Nothing
+
+        Saves: cont-mat.array and cont-mat.dat in path/native-contact/data  
+
+        """
         cm = ExtractNativeContact(path, self.pdb_file, self.dcd_file)
         cm.generate_contact_matrix()
         
-        # Pass contact matrix through CVAE and retrieve encoded_data
+    def CVAE_latent_space(self, path):
+        """
+        EFFECTS: Computes CVAE generated latent space from contact matrix 
+                 stored in path/native-contact/data/cont-mat.array.
+
+        Parameters:
+          path : string
+              path of the directory containing the native-contact directory
+
+        Returns: 
+          encoded_data : numpy array 
+              numpy array with shape (sim_steps/traj_out_freq, 3)
+        """
         cvae = CVAE(path=path, sep_train=0, sep_test=0, sep_pred=1, f_traj=self.sim_steps/self.traj_out_freq)
         cvae.load_contact_matrix(path + "native-contact/data/cont-mat.dat",
                                  path + "native-contact/data/cont-mat.array")
         cvae.compile()
         cvae.load_weights(self.cvae_weights_path)
-        encoded_data = cvae.encode_pred()
-        np.save(self.output_dir + "/results/final_output/intermediate_data/encoded_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
-                encoded_data)
+        return cvae.encode_pred() # encoded_data
+
+    def calc_rmsd_values(self, path):
+        """
+        EFFECTS: First empties self.rmsd_state then refils it with updated
+                 RMSD to native state values from the latest latent sampling.
+                 Also updates self.rmsd_max and self.rmsd_min which are used
+                 for plotting.
         
-        # Calculate rmsd values for each PDB file sampled.
+        Parameters:
+          path : string
+              path of the directory containing the pdb_data directory
+ 
+        Returns: Nothing
+        """
         self.rmsd_state = []
         for i in range(self.sim_steps/self.traj_out_freq):
             path_1 = path + "/pdb_data/output-%i.pdb" % i
@@ -318,28 +389,28 @@ class environment(object):
 
         if(min(self.rmsd_state) < self.rmsd_min):
             self.rmsd_min = min(self.rmsd_state)
+   
+    def calc_num_native_contacts(self, path):
+        """
+        EFFECTS: First empties self.num_native_contacts then refils it with updated
+                 native contact values from the latest latent sampling.
 
+        Parameters:
+          path : string
+              path of the directory containing the pdb_data directory
 
-
-        np.save(self.output_dir + "/results/final_output/intermediate_data/rmsd_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
-                self.rmsd_state)       
-        # Calculate number of native contacts for state
+        Returns: Nothing
+        """    
         self.num_native_contacts = []
-        # Build native contact matrix
-        #if i_episode == 0:
-        #    calc_native_contact(native_pdb=self.native_pdb,
-        #                        out_path='./results/final_output',
-        #                        dat_file='native-cont-mat.dat',
-        #                        array_file='native-cont-mat.array')
-        #else:
-        #    calc_native_contact(native_pdb=self.native_pdb,
-        #                        out_path=path + "native-contact/raw")
-        
+        # TODO: Move this code block to __init__ and make n, and native_cont_mat attributes
+        ##########
         fin = open(self.output_dir + '/results/final_output/native-cont-mat.array', "r")
         native_cont_mat = fin.read()
         fin.close()
         native_cont_mat = np.fromstring(native_cont_mat, dtype='float32', sep=' ')
         n = int(sqrt(native_cont_mat.shape[0]))
+        ##########
+
         for i in range(self.sim_steps/self.traj_out_freq):
             fin = open(path + "native-contact/raw/cont-mat_%i.array" % i)
             ith_cont_mat = fin.read()
@@ -353,25 +424,74 @@ class environment(object):
                 while col < n:
                     if ith_cont_mat[shift + col] == native_cont_mat[shift + col]:
                         counter += 1
-                    col += 1 
-                
+                    col += 1
+
                 row += 1
-            self.num_native_contacts.append(counter)     
-        
-        # Perform DBSCAN clustering on all the data produced in the ith RL iteration.
-        db = DBSCAN(eps=self.d_eps, min_samples=self.d_min_samples).fit(encoded_data)
-        # Compute number of observations in the DBSCAN cluster of the ith PDB
-        self.obs_in_cluster = []
-        labels_dict = Counter(db.labels_)
-        # Compute number of DBSCAN clusters for reward function
+            self.num_native_contacts.append(counter)
+
+    def calc_num_dbscan_clusters(self, labels_dict):
+        """
+        EFFECTS: Resets self.num_dbscan_clusters with the updated
+                 clustering from the latest latent sampling.
+
+        Parameters:
+          labels_dict : dict
+              Dictionary with key = cluster id and value = number of members
+              of a DBSCAN cluster db.labels_
+
+        Returns: Nothing
+        """    
         self.num_dbscan_clusters = len(labels_dict)
-        for label in db.labels_:
+
+    def calc_obs_in_cluster(self, labels_dict, labels):
+        """
+        EFFECTS: Resets self.obs_in_cluster with the updated
+                 clustering from the latest latent sampling.
+
+        Parameters:
+          labels_dict : dict
+              Dictionary with key = cluster id and value = number of members
+              of a DBSCAN cluster db.labels_
+          labels : list
+              List containing the DBSCAN clustered label data of each point
+              in the latent space. db.labels_
+
+        Returns: Nothing
+        """    
+        self.obs_in_cluster = []
+
+        for label in labels:
             self.obs_in_cluster.append(labels_dict[label])
-            
-        for cluster in Counter(db.labels_):
-            print('dbscan cluster:',cluster)
-            print('dbscan clusters:',Counter(db.labels_))
-            indices = get_cluster_indices(labels=db.labels_, cluster=cluster)
+    
+    def get_outliers(self, path, labels_dict, labels):
+        """
+        EFFECTS: Searches all the clusters for outliers. If the cluster id is -1
+                 it is considered a DBSCAN outlier and any latent point DBSCAN 
+                 outliers with RMSD to native state less than self.rmsd_threshold 
+                 are added to self.pdb_stack to spawn new MD simulations. If the
+                 cluster id is not -1 then we collect all the rmsd values in 
+                 rmsd_values and then compute a numpy array with the z-scores 
+                 of the rmsd_values distribution. Since, the CVAE generates
+                 normally distributed clusters, the RMSD values should be normally
+                 distributed. Thus, any RMSD values with z-score < -3 are marked as
+                 outliers within the DBSCAN cluster and are added to self.pdb_stack.
+
+        Parameters:
+          path : string
+              path of the directory containing the pdb_data directory
+          labels_dict : dict
+              Dictionary with key = cluster id and value = number of members
+              of a DBSCAN cluster db.labels_
+          labels : list
+              List containing the DBSCAN clustered label data of each point
+              in the latent space. db.labels_
+
+        Returns: Nothing
+        """  
+        for cluster in labels_dict:
+            print('dbscan cluster:', cluster)
+            print('dbscan clusters:', labels_dict)
+            indices = get_cluster_indices(labels=labels, cluster=cluster)
             path_to_pdb = []
             rmsd_values = []
             for ind in indices:
@@ -401,31 +521,29 @@ class environment(object):
                         self.pdb_stack.append(path_to_pdb[ind][0]) 
                     ind += 1
 
-
-
-     '''
-      EFFECTS: Plots DBscan clusters based on cluster value, and then by rmsd. Plots include all previous simulation data, if any, but no data from episodes/cycles occuring later.  
-
-      Parameters: 
-         - in_path: string
-           path where rmsd_data.npy and encodeded_data.npy are stored
-         - out_path: string
-           path to folder the plots should be saved to
-         - episode: int
-           which episode should be plotted (indexed from 1)
-         - j_cycle: int
-           which cycle should be plotted (indexed from 0)
-         - title: string
-           appended to begin of each plot, implemented to create final vs. intermediate plot. (omit ?)
-
-       Returns: Nothing
-       Saves: Two plots in 'out_path' folder
-
-     '''
-
-
-	#TODO calculate RMSD max + min from numpy arrays, then remove this function from environment
+    #TODO calculate RMSD max + min from numpy arrays, then remove this function from environment
     def plot_intermediate_episode(self, in_path, out_path, episode, j_cycle, title):
+        """
+        EFFECTS: Plots DBscan clusters based on cluster value, and then by rmsd.
+                 Plots include all previous simulation data, if any, but no data
+                 from episodes/cycles occuring later.
+
+        Parameters:
+          in_path: string
+              path where rmsd_data.npy and encodeded_data.npy are stored
+          out_path: string
+              path to folder the plots should be saved to
+          episode: int
+              which episode should be plotted (indexed from 1)
+          j_cycle: int
+              which cycle should be plotted (indexed from 0)
+          title: string
+              appended to begin of each plot, implemented to create final vs. intermediate plot. (omit ?)
+
+        Returns: Nothing
+        
+        Saves: Two plots in 'out_path' folder
+        """
         int_encoded_data = get_all_encoded_data(in_path, episode, j_cycle, 'encoded_data_rl')
         int_rmsd_data = get_all_encoded_data(in_path, episode, j_cycle, 'rmsd_data_rl')
         print("int_encoded_data:", len(int_encoded_data))
