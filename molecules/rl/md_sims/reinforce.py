@@ -61,7 +61,7 @@ class reinforce(object):
         self.traj_out_freq = traj_out_freq
         self.episodes = episodes
         self.policy = Policy(input_dim=sim_steps/traj_out_freq)
-        self.policy.apply(init_weights)
+        self.policy.apply(init_weights) # may not be necessary
         self.optimizer = optim.SGD(self.policy.parameters(), lr=1e-8)
         # Randomly choose an eps to normalize rewards
         self.eps = np.finfo(np.float32).eps.item()
@@ -129,6 +129,7 @@ class reinforce(object):
         del self.policy.saved_log_probs_magnitude[:]
 
     def main(self):
+        # TODO: Clean up file IO and directory creation
         path = self.output_dir + "/results/iteration_rl_"
         if not os.path.exists(path + "%i" % 0):
             os.mkdir(path + "%i" % 0, 0755)
@@ -162,6 +163,7 @@ class reinforce(object):
                 self.policy.rewards.append(reward)
                 if done:
                     break
+            # TODO: Refactor
             if (j_cycle < 2) or i_episode == self.episodes:
                 break
 
@@ -173,6 +175,8 @@ class reinforce(object):
             for name, param in self.policy.named_parameters():
                 if param.requires_grad:
                     print('After finish name param.data:',name, param.data)
+
+        # For plotting purposes
         for i in range(1, i_episode + 1):
              print("print %i episode" %i) 
              # TODO: update 3 to user defined variable

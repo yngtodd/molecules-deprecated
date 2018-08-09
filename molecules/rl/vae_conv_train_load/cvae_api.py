@@ -93,7 +93,8 @@ class CVAE(object):
         self.n1 = n1
 
         # End define parameters
-
+         
+        # TODO: Put at first instance of outputting data
         self.build_directories()
         # Other class atributes
         
