@@ -116,9 +116,10 @@ def get_all_encoded_data(dir_path, episode, j_num, name):
     elif name[0] == 'r':
         return np.reshape(data, (data.shape[0] * data.shape[1]))
 
-
+# TODO: Investigate most recent MDAnalysis update
 def calc_native_contact(native_pdb, out_path, dat_file='cont-mat.dat', array_file='cont-mat.array'):
     u_native = mdanal.Universe(native_pdb)
+    # TODO: Automate selection of CA
     CA = "(name CA and resid 1:24)"
     CA0 = u_native.select_atoms(CA)
     ca = contacts.ContactAnalysis1(u_native, selection=(CA, CA), refgroup=(CA0, CA0), radius=8.0, 
@@ -135,8 +136,9 @@ def calc_native_contact(native_pdb, out_path, dat_file='cont-mat.dat', array_fil
         if i == arr.shape[0] - 1:
             break
         else:
-            arr[i][i+1] = 0.
-            arr[i+1][i] = 0.
+            # condensed numpy arg for effiecency , JPK 8/9/18
+            arr[i, i+1] = 0.
+            arr[i+1, i] = 0.
     temp = ''
     for ind in range(0, arr.shape[0]):
         for inj in range(0, arr.shape[0]):
@@ -151,6 +153,7 @@ def calc_native_contact(native_pdb, out_path, dat_file='cont-mat.dat', array_fil
     # remove zipped array file
     os.remove(out_path + '/' + array_file +'.gz')
 
+# TODO: Make class containing parameters
 
 class environment(object):
     def __init__(self, cvae_weights_path, sim_steps=20000, traj_out_freq=100, native_pdb=None, output_dir=None):
@@ -162,11 +165,17 @@ class environment(object):
         self.obs_in_cluster = []
         self.num_dbscan_clusters = 1
         
+        # TODO: Put in plotting function
         self.rmsd_max = -100000
         self.rmsd_min = 100000
+
+        # TODO: Think of better way to store pdb, dcd files
+        #       If dcd file isn't named like this then it will break the extract native contact
+        #       code. This needs to be fixed.
         # IO variables
         self.dcd_file = 'output-1.dcd'
         self.pdb_file = 'output.pdb'
+        # TODO: Make input parameter
         # For testing purposes
         self.initial_pdb = ['/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-0.pdb',
                             '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-1.pdb',
@@ -174,11 +183,13 @@ class environment(object):
                             '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-3.pdb',
                             '/home/a05/data/fs-peptide/raw_MD_data/native-state/fs-peptide-4.pdb']
         
+        # TODO: Make input parameter
         if native_pdb == None:
             # For testing purposes
             self.native_pdb = '/home/a05/data/fs-peptide/raw_MD_data/fs-peptide.pdb'
         else:
             self.native_pdb = native_pdb
+
         self.native_protein = mdanal.Universe(self.native_pdb)
  
         self.cvae_weights_path = cvae_weights_path
@@ -187,13 +198,16 @@ class environment(object):
         self.pdb_stack = []
         self.rmsd_threshold = 10.0 # Set to random seed?
         # TODO: Update parameters based on the size of the data set
+        #       DBSCAN should have 4-5% outliers.
         # DBSCAN params
         self.d_eps = 0.03
         self.d_min_samples = 4 #10
+
         if not os.path.exists(output_dir):
             raise Exception("Path " + str(output_dir) + " does not exist!")
         self.output_dir = output_dir
         
+        # TODO: Put in extractnativecontact class
         calc_native_contact(native_pdb=self.native_pdb,
                             out_path=self.output_dir + '/results/final_output',
                             dat_file='native-cont-mat.dat',
@@ -202,10 +216,12 @@ class environment(object):
     def initial_state(self, path):
         # Run MD simulation
         self.MDsimulation(path)
+        # TODO: 0 index the i_episode
         self.internal_step(path=path, i_episode=1, j_cycle=0)            
         return np.array(self.rmsd_state)
         
-    
+    # TODO: Generalize for user defined state and use this function as a return value 
+    #       for other functions (initial_state)
     def get_state(self):
         return np.array(self.rmsd_state)
     
@@ -244,10 +260,12 @@ class environment(object):
         self.MDsimulation(path)
         self.internal_step(path, i_episode, j_cycle=j_cycle)
         print("len of pdb_stack After sim:",len(self.pdb_stack))
-       # plot_entire_episode("/results/final_output/intermediate_data/encoded_data_rl_%i_%i.npy" % (i_episode, j_cycle), self.output_dir + "/results/final_output/")
+        # plot_entire_episode("/results/final_output/intermediate_data/encoded_data_rl_%i_%i.npy" % (i_episode, j_cycle), self.output_dir + "/results/final_output/")
+        # TODO: Think about what done should be (RL process)
         return (np.array(self.rmsd_state), self.reward(), len(self.pdb_stack) == 0) 
         
-    
+    # TODO: Take in openMM simulation object to allow user to specify all parameters
+    # TODO: Reuse one simulation throughout the enitre process. Just update coordinates and minimize energy (maybe)
     def MDsimulation(self, path, out_dcd_file=None, pdb_in=None, 
                      ff='amber14-all.xml', 
                      water_model='amber14/tip3pfb.xml'):
@@ -356,6 +374,7 @@ class environment(object):
           encoded_data : numpy array 
               numpy array with shape (sim_steps/traj_out_freq, 3)
         """
+        # CVAE should be declared in __init__
         cvae = CVAE(path=path, sep_train=0, sep_test=0, sep_pred=1, f_traj=self.sim_steps/self.traj_out_freq)
         cvae.load_contact_matrix(path + "native-contact/data/cont-mat.dat",
                                  path + "native-contact/data/cont-mat.array")
@@ -410,7 +429,8 @@ class environment(object):
         native_cont_mat = np.fromstring(native_cont_mat, dtype='float32', sep=' ')
         n = int(sqrt(native_cont_mat.shape[0]))
         ##########
-
+        
+        # TODO: Consider putting in ExtractNativeContact
         for i in range(self.sim_steps/self.traj_out_freq):
             fin = open(path + "native-contact/raw/cont-mat_%i.array" % i)
             ith_cont_mat = fin.read()
