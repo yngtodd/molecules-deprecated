@@ -426,6 +426,64 @@ class environment(object):
 
         for label in labels:
             self.obs_in_cluster.append(labels_dict[label])
+    
+    def get_outliers(self, path labels_dict, labels):
+        """
+        EFFECTS: Searches all the clusters for outliers. If the cluster id is -1
+                 it is considered a DBSCAN outlier and any latent point DBSCAN 
+                 outliers with RMSD to native state less than self.rmsd_threshold 
+                 are added to self.pdb_stack to spawn new MD simulations. If the
+                 cluster id is not -1 then we collect all the rmsd values in 
+                 rmsd_values and then compute a numpy array with the z-scores 
+                 of the rmsd_values distribution. Since, the CVAE generates
+                 normally distributed clusters, the RMSD values should be normally
+                 distributed. Thus, any RMSD values with z-score < -3 are marked as
+                 outliers within the DBSCAN cluster and are added to self.pdb_stack.
+
+        Parameters:
+          path : string
+              path of the directory containing the pdb_data directory
+          labels_dict : dict
+              Dictionary with key = cluster id and value = number of members
+              of a DBSCAN cluster db.labels_
+          labels : list
+              List containing the DBSCAN clustered label data of each point
+              in the latent space. db.labels_
+
+        Returns: Nothing
+        """  
+        for cluster in labels_dict:
+            print('dbscan cluster:', cluster)
+            print('dbscan clusters:', labels_dict)
+            indices = get_cluster_indices(labels=labels, cluster=cluster)
+            path_to_pdb = []
+            rmsd_values = []
+            for ind in indices:
+                path_1 = path + "/pdb_data/output-%i.pdb" % ind
+                # For DBSCAN outliers
+                if cluster == -1:
+                    if self.rmsd_state[ind] < self.rmsd_threshold:
+                        # Start next rl iteration with this pdb path_1
+                        print("RMSD threshold:", self.rmsd_threshold)
+                        print("RMSD to native contact for DBSCAN outlier at index %i :" % ind, self.rmsd_state[ind])
+                        self.pdb_stack.append(path_1)
+                # For RMSD outliers within DBSCAN clusters
+                else:
+                    rmsd_values.append(self.rmsd_state[ind])
+                    path_to_pdb.append((path_1, ind))
+            # For RMSD outliers within DBSCAN clusters
+            if cluster != -1:
+                rmsd_array = np.array(rmsd_values)
+                rmsd_zscores = stats.zscore(rmsd_array)
+                ind = 0
+                for zscore in rmsd_zscores:
+                    # z-score of -3 marks outlier for a normal distribution.
+                    # Assuming Normal Distribution of RMSD values because 
+                    # CVAE yields normally distributed clusters.
+                    if zscore <= -3:
+                        print("RMSD to native contact for DBSCAN clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values[ind])
+                        self.pdb_stack.append(path_to_pdb[ind][0]) 
+                    ind += 1
 
     def internal_step(self, path, i_episode, j_cycle):
         # Calculate contact matrix
@@ -460,38 +518,8 @@ class environment(object):
         # Compute number of observations in the DBSCAN cluster of the ith PDB
         self.calc_obs_in_cluster(labels_dict, db.labels_)
             
-        for cluster in labels_dict:
-            print('dbscan cluster:', cluster)
-            print('dbscan clusters:', labels_dict)
-            indices = get_cluster_indices(labels=db.labels_, cluster=cluster)
-            path_to_pdb = []
-            rmsd_values = []
-            for ind in indices:
-                path_1 = path + "/pdb_data/output-%i.pdb" % ind
-                # For DBSCAN outliers
-                if cluster == -1:
-                    if self.rmsd_state[ind] < self.rmsd_threshold:
-                        # Start next rl iteration with this pdb path_1
-                        print("RMSD threshold:", self.rmsd_threshold)
-                        print("RMSD to native contact for DBSCAN outlier at index %i :" % ind, self.rmsd_state[ind])
-                        self.pdb_stack.append(path_1)
-                # For RMSD outliers within DBSCAN clusters
-                else:
-                    rmsd_values.append(self.rmsd_state[ind])
-                    path_to_pdb.append((path_1, ind))
-            # For RMSD outliers within DBSCAN clusters
-            if cluster != -1:
-                rmsd_array = np.array(rmsd_values)
-                rmsd_zscores = stats.zscore(rmsd_array)
-                ind = 0
-                for zscore in rmsd_zscores:
-                    # z-score of -3 marks outlier for a normal distribution.
-                    # Assuming Normal Distribution of RMSD values because 
-                    # CVAE yields normally distributed clusters.
-                    if zscore <= -3:
-                        print("RMSD to native contact for DBSCAN clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values[ind])
-                        self.pdb_stack.append(path_to_pdb[ind][0]) 
-                    ind += 1
+        # Finds outliers in the latent space and adds them to self.pdb_stack to spawn new MD simulations    
+        self.get_outliers(path, labels_dict, db.labels_)
 
     #TODO calculate RMSD max + min from numpy arrays, then remove this function from environment
     def plot_intermediate_episode(self, in_path, out_path, episode, j_cycle, title):
