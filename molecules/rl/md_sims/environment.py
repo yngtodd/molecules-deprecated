@@ -455,10 +455,10 @@ class environment(object):
         labels_dict = Counter(db.labels_)
 
         # Compute number of DBSCAN clusters for reward function
-        calc_num_dbscan_clusters(labels_dict)
+        self.calc_num_dbscan_clusters(labels_dict)
 
         # Compute number of observations in the DBSCAN cluster of the ith PDB
-        calc_obs_in_cluster(labels_dict, db.labels_)
+        self.calc_obs_in_cluster(labels_dict, db.labels_)
             
         for cluster in labels_dict:
             print('dbscan cluster:', cluster)
