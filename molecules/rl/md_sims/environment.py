@@ -427,7 +427,7 @@ class environment(object):
         for label in labels:
             self.obs_in_cluster.append(labels_dict[label])
     
-    def get_outliers(self, path labels_dict, labels):
+    def get_outliers(self, path, labels_dict, labels):
         """
         EFFECTS: Searches all the clusters for outliers. If the cluster id is -1
                  it is considered a DBSCAN outlier and any latent point DBSCAN 
