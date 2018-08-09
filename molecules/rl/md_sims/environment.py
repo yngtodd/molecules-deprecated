@@ -393,6 +393,40 @@ class environment(object):
                 row += 1
             self.num_native_contacts.append(counter)
 
+    def calc_num_dbscan_clusters(self, labels_dict):
+        """
+        EFFECTS: Resets self.num_dbscan_clusters with the updated
+                 clustering from the latest latent sampling.
+
+        Parameters:
+          labels_dict : dict
+              Dictionary with key = cluster id and value = number of members
+              of a DBSCAN cluster db.labels_
+
+        Returns: Nothing
+        """    
+        self.num_dbscan_clusters = len(labels_dict)
+
+    def calc_obs_in_cluster(self, labels_dict, labels):
+        """
+        EFFECTS: Resets self.obs_in_cluster with the updated
+                 clustering from the latest latent sampling.
+
+        Parameters:
+          labels_dict : dict
+              Dictionary with key = cluster id and value = number of members
+              of a DBSCAN cluster db.labels_
+          labels : list
+              List containing the DBSCAN clustered label data of each point
+              in the latent space. db.labels_
+
+        Returns: Nothing
+        """    
+        self.obs_in_cluster = []
+
+        for label in labels:
+            self.obs_in_cluster.append(labels_dict[label])
+
     def internal_step(self, path, i_episode, j_cycle):
         # Calculate contact matrix
         self.extract_contact_matrix(path)
@@ -416,17 +450,19 @@ class environment(object):
 
         # Perform DBSCAN clustering on all the data produced in the ith RL iteration.
         db = DBSCAN(eps=self.d_eps, min_samples=self.d_min_samples).fit(encoded_data)
-        # Compute number of observations in the DBSCAN cluster of the ith PDB
-        self.obs_in_cluster = []
+
+        # Build dictionary of the form {cluster id : number of occurences}
         labels_dict = Counter(db.labels_)
+
         # Compute number of DBSCAN clusters for reward function
-        self.num_dbscan_clusters = len(labels_dict)
-        for label in db.labels_:
-            self.obs_in_cluster.append(labels_dict[label])
+        calc_num_dbscan_clusters(labels_dict)
+
+        # Compute number of observations in the DBSCAN cluster of the ith PDB
+        calc_obs_in_cluster(labels_dict, db.labels_)
             
-        for cluster in Counter(db.labels_):
-            print('dbscan cluster:',cluster)
-            print('dbscan clusters:',Counter(db.labels_))
+        for cluster in labels_dict:
+            print('dbscan cluster:', cluster)
+            print('dbscan clusters:', labels_dict)
             indices = get_cluster_indices(labels=db.labels_, cluster=cluster)
             path_to_pdb = []
             rmsd_values = []
