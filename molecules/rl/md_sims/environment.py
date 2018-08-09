@@ -289,6 +289,42 @@ class environment(object):
         fout.write(final_pdb_data)
         fout.close()
 
+    def internal_step(self, path, i_episode, j_cycle):
+        # Calculate contact matrix
+        self.extract_contact_matrix(path)
+        
+        # Pass contact matrix through CVAE and retrieve encoded_data
+        encoded_data = self.CVAE_latent_space(path)
+
+        # Save encoded_data for analysis
+        np.save(self.output_dir + "/results/final_output/intermediate_data/encoded_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
+                encoded_data)
+        
+        # Calculate rmsd values for each PDB file sampled.
+        self.calc_rmsd_values(path)
+
+        # Save rmsd_state for analysis
+        np.save(self.output_dir + "/results/final_output/intermediate_data/rmsd_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
+                self.rmsd_state)       
+
+        # Calculate number of native contacts for state
+        self.calc_num_native_contacts(path)
+
+        # Perform DBSCAN clustering on all the data produced in the ith RL iteration.
+        db = DBSCAN(eps=self.d_eps, min_samples=self.d_min_samples).fit(encoded_data)
+
+        # Build dictionary of the form {cluster id : number of occurences}
+        labels_dict = Counter(db.labels_)
+
+        # Compute number of DBSCAN clusters for reward function
+        self.calc_num_dbscan_clusters(labels_dict)
+
+        # Compute number of observations in the DBSCAN cluster of the ith PDB
+        self.calc_obs_in_cluster(labels_dict, db.labels_)
+            
+        # Finds outliers in the latent space and adds them to self.pdb_stack to spawn new MD simulations    
+        self.get_outliers(path, labels_dict, db.labels_)
+
     def extract_contact_matrix(self, path):
         """
         EFFECTS: Generates contact matrices using ExtractNativeContact and outputs
@@ -484,42 +520,6 @@ class environment(object):
                         print("RMSD to native contact for DBSCAN clustered outlier at index %i :" % path_to_pdb[ind][1], rmsd_values[ind])
                         self.pdb_stack.append(path_to_pdb[ind][0]) 
                     ind += 1
-
-    def internal_step(self, path, i_episode, j_cycle):
-        # Calculate contact matrix
-        self.extract_contact_matrix(path)
-        
-        # Pass contact matrix through CVAE and retrieve encoded_data
-        encoded_data = self.CVAE_latent_space(path)
-
-        # Save encoded_data for analysis
-        np.save(self.output_dir + "/results/final_output/intermediate_data/encoded_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
-                encoded_data)
-        
-        # Calculate rmsd values for each PDB file sampled.
-        self.calc_rmsd_values(path)
-
-        # Save rmsd_state for analysis
-        np.save(self.output_dir + "/results/final_output/intermediate_data/rmsd_data_rl_%i_%i.npy" % (i_episode, j_cycle), 
-                self.rmsd_state)       
-
-        # Calculate number of native contacts for state
-        self.calc_num_native_contacts(path)
-
-        # Perform DBSCAN clustering on all the data produced in the ith RL iteration.
-        db = DBSCAN(eps=self.d_eps, min_samples=self.d_min_samples).fit(encoded_data)
-
-        # Build dictionary of the form {cluster id : number of occurences}
-        labels_dict = Counter(db.labels_)
-
-        # Compute number of DBSCAN clusters for reward function
-        self.calc_num_dbscan_clusters(labels_dict)
-
-        # Compute number of observations in the DBSCAN cluster of the ith PDB
-        self.calc_obs_in_cluster(labels_dict, db.labels_)
-            
-        # Finds outliers in the latent space and adds them to self.pdb_stack to spawn new MD simulations    
-        self.get_outliers(path, labels_dict, db.labels_)
 
     #TODO calculate RMSD max + min from numpy arrays, then remove this function from environment
     def plot_intermediate_episode(self, in_path, out_path, episode, j_cycle, title):
