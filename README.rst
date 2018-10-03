@@ -27,6 +27,8 @@ Welcome to Molecules!
 =====================
 Machine learning for molecular dynamics.
 
+* Note: This library is now deprecated. We are currently rebuilding the library from the ground up!
+
 * Documentation: https://molecules.readthedocs.io.
 
 Features
